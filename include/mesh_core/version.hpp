@@ -1,0 +1,8 @@
+#pragma once
+
+#define MESH_CORE_VER_MAJOR 0
+#define MESH_CORE_VER_MINOR 0
+#define MESH_CORE_VER_PATCH 1
+
+#define MESH_CORE_TO_VERSION(major, minor, patch) (major * 10000 + minor * 100 + patch)
+#define MESH_CORE_VERSION MESH_CORE_TO_VERSION(MESH_CORE_VER_MAJOR, MESH_CORE_VER_MINOR, MESH_CORE_VER_PATCH)
