@@ -6,9 +6,9 @@
 // other include
 #include "mesh_core/detail/copyable.hpp"
 #include "mesh_core/detail/log.h"
+#include "mesh_core/detail/lru_record.hpp"
+#include "mesh_core/detail/message.hpp"
 #include "mesh_core/detail/noncopyable.hpp"
-#include "mesh_core/lru_record.hpp"
-#include "mesh_core/message.hpp"
 #include "mesh_core/type.hpp"
 
 // std
@@ -33,7 +33,7 @@ class mesh : detail::noncopyable {
   }
 
   void send(addr_t addr, data_t msg) {
-    message m;
+    detail::message m;
     m.src = addr_;
     m.dest = addr;
     m.seq = seq_++;
@@ -50,7 +50,7 @@ class mesh : detail::noncopyable {
   void init() {
     impl_->set_recv_handle([this](const std::string& payload) {
       bool ok = false;
-      auto msg = message::deserialize(payload, ok);
+      auto msg = detail::message::deserialize(payload, ok);
       if (ok) {
         this->dispatch(std::move(msg));
       } else {
@@ -59,12 +59,12 @@ class mesh : detail::noncopyable {
     });
   }
 
-  void broadcast(message data) {
+  void broadcast(detail::message data) {
     auto payload = data.serialize();
     impl_->broadcast(payload);
   }
 
-  void dispatch(message message) {
+  void dispatch(detail::message message) {
     MESH_CORE_LOGD("=>: self: 0x%02X, src: 0x%02X, dest: 0x%02X, seq: %u, ttl: %u, data: %s", addr_, message.src, message.dest, message.seq,
                    message.ttl, message.data.c_str());
     if (message.src == this->addr_) {  // drop message
@@ -107,7 +107,7 @@ class mesh : detail::noncopyable {
   recv_handle_t recv_handle_;
   addr_t addr_ = ADDR_DEFAULT;
   seq_t seq_ = 0;
-  lru_record<msg_uuid_t> msg_uuid_cache_{LRU_RECORD_SIZE};
+  detail::lru_record<msg_uuid_t> msg_uuid_cache_{LRU_RECORD_SIZE};
   Impl* impl_ = nullptr;
 };
 

@@ -5,6 +5,7 @@
 #include <list>
 
 namespace mesh_core {
+namespace detail {
 
 template <typename T>
 class lru_record {
@@ -42,4 +43,5 @@ class lru_record {
   size_t max_size_;
 };
 
+}  // namespace detail
 }  // namespace mesh_core

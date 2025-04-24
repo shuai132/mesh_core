@@ -12,6 +12,7 @@
 #include <string>
 
 namespace mesh_core {
+namespace detail {
 
 struct message : detail::copyable {
   // header
@@ -64,4 +65,5 @@ struct message : detail::copyable {
   }
 };
 
+}  // namespace detail
 }  // namespace mesh_core
