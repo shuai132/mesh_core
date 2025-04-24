@@ -8,10 +8,10 @@
 static asio::io_context s_io_context;
 
 struct Impl {
-  std::vector<std::function<void(std::string)>> recv_handles_;
+  std::vector<std::function<void(std::string)>> recv_handles;
 
   void broadcast(const std::string& data) {
-    for (const auto& item : recv_handles_) {
+    for (const auto& item : recv_handles) {
       asio::post(s_io_context, [&item, data] {
         item(data);
       });
@@ -19,10 +19,10 @@ struct Impl {
   }
 
   void set_recv_handle(std::function<void(std::string)> handle) {
-    recv_handles_.push_back(std::move(handle));
+    recv_handles.push_back(std::move(handle));
   }
 
-  void run_delay(std::function<void()> handle, int ms) {
+  static void run_delay(std::function<void()> handle, int ms) {
     auto timer = std::make_shared<asio::steady_timer>(s_io_context);
     timer->expires_after(std::chrono::milliseconds(ms));
     timer->async_wait([handle, timer](const asio::error_code&) mutable {

@@ -40,8 +40,8 @@ if (MESH_CORE_BUILD_TEST)
     # for android standalone e.g. termux
     add_definitions(-DANDROID_STANDALONE)
 
-    set(TARGET_NAME ${PROJECT_NAME}_simple)
-    add_executable(${TARGET_NAME} test/simple.cpp)
+    set(TARGET_NAME ${PROJECT_NAME}_usage)
+    add_executable(${TARGET_NAME} test/usage.cpp)
     target_link_libraries(${TARGET_NAME} ${PROJECT_NAME})
 
     set(TARGET_NAME ${PROJECT_NAME}_unittest)

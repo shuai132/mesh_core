@@ -1,25 +1,3 @@
-# mesh_core
-
-[![Build Status](https://github.com/shuai132/mesh_core/workflows/CI/badge.svg)](https://github.com/shuai132/mesh_core/actions?workflow=CI)
-
-A lightweight mesh solution, works best for small networks.
-
-Sophisticated routing protocols can be overly complex and error-prone. For networks with limited nodes, using **flooding
-with optimizations**  can actually create a more robust mesh system.
-
-## Features
-
-* Header-Only
-* No route-table
-* Easy to use, understand, and debug.
-
-## Usage
-
-* usage template
-
-  [test/usage.cpp](test/usage.cpp)
-
-```c++
 #include "mesh_core.hpp"
 
 /**
@@ -74,12 +52,3 @@ int main() {
   mesh.send(0x01, "hello");
   return 0;
 }
-```
-
-* unittest
-
-  [test/unittest.cpp](test/unittest.cpp)
-
-* UDP demo
-
-  [test/udp_mesh.cpp](test/udp_mesh.cpp)

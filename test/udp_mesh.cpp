@@ -13,15 +13,14 @@ const asio::ip::udp::endpoint broadcast_endpoint(asio::ip::address_v4::broadcast
 static void udp_broadcast(std::string data);
 
 struct Impl {
-  std::function<void(std::string)> handle_;
-  std::function<void(std::string)> broadcast_;
+  std::function<void(std::string)> recv_handle;
 
   static void broadcast(std::string data) {
     udp_broadcast(std::move(data));
   }
 
   void set_recv_handle(std::function<void(std::string)> handle) {
-    handle_ = std::move(handle);
+    recv_handle = std::move(handle);
   }
 
   static void run_delay(std::function<void()> handle, int ms) {
@@ -57,7 +56,7 @@ static void start_recv(Impl& impl) {
     if (!ec) {
       std::string message = std::string(recv_buffer.data(), bytes_received);
       MESH_CORE_LOGD("UPD message: %s", message.c_str());
-      impl.handle_(message);
+      impl.recv_handle(message);
       start_recv(impl);
     } else {
       MESH_CORE_LOGE("UPD error: %s", ec.message().c_str());
