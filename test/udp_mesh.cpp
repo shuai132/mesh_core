@@ -33,7 +33,7 @@ struct Impl {
     });
   }
 
-  int random(int l, int r) {
+  static int random(int l, int r) {
     static std::random_device rd;
     static std::mt19937 gen(rd());
     std::uniform_int_distribution<int> dist(l, r);
@@ -65,7 +65,7 @@ static void start_recv(Impl& impl) {
   });
 }
 
-void init_udp_impl(Impl& impl) {
+static void init_udp_impl(Impl& impl) {
   s_socket.open(asio::ip::udp::v4());
   s_socket.set_option(asio::socket_base::broadcast(true));
   s_socket.set_option(asio::socket_base::reuse_address(true));
@@ -73,32 +73,11 @@ void init_udp_impl(Impl& impl) {
   start_recv(impl);
 }
 
-void start_async_read(std::function<void(std::string)> handle = nullptr) {
-  static std::function<void(std::string)> handle_;
-  static asio::posix::stream_descriptor stdin_(s_io_context, ::dup(STDIN_FILENO));
-  static std::string input_buffer;
-  if (handle != nullptr) {
-    handle_ = std::move(handle);
-  }
-  asio::async_read_until(stdin_, asio::dynamic_buffer(input_buffer), '\n', [](const asio::error_code& ec, std::size_t) {
-    if (!ec) {
-      input_buffer.pop_back();
-      handle_(std::move(input_buffer));
-      input_buffer.clear();
-      start_async_read();
-    } else {
-      MESH_CORE_LOGE("read error: %s", ec.message().c_str());
-    }
-  });
-}
-
 int main() {
-  uint8_t addr;
-  uint8_t dest;
-  std::cout << "input addr self:" << std::endl;
+  int addr;
+  std::cout << "set addr: ";
   std::cin >> addr;
-  std::cout << "input addr dest:" << std::endl;
-  std::cin >> dest;
+  printf("addr is: 0x%02X\n", addr);
 
   using namespace mesh_core;
   Impl impl;
@@ -110,9 +89,20 @@ int main() {
 
   init_udp_impl(impl);
 
-  start_async_read([&](std::string input) {
-    mesh.send(dest, std::move(input));
-  });
+  std::thread([&] {
+    for (;;) {
+      int dest;
+      std::string message;
+      std::cout << "to addr: ";
+      std::cin >> dest;
+      std::cout << "message: ";
+      std::cin >> message;
+      printf("send to addr: 0x%02X, message: %s\n", dest, message.c_str());
+      asio::post(s_io_context, [=, &mesh] {
+        mesh.send(dest, message);
+      });
+    }
+  }).detach();
 
   auto worker = asio::make_work_guard(s_io_context);
   s_io_context.run();
