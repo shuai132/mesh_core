@@ -32,6 +32,6 @@ using recv_handle_t = std::function<void(addr_t, data_t)>;
 /// default value
 const addr_t ADDR_DEFAULT = 0x00;
 const ttl_t TTL_DEFAULT = 5;
-const ttl_t LRU_RECORD_SIZE = 10;
+const int LRU_RECORD_SIZE = 32;
 
 }  // namespace mesh_core
