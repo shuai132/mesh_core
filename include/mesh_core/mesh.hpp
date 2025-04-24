@@ -38,12 +38,24 @@ class mesh : detail::noncopyable {
     m.dest = addr;
     m.seq = seq_++;
     m.ttl = TTL_DEFAULT;
+    m.ts = impl_->get_timestamps_ms();
     m.data = std::move(msg);
     broadcast(std::move(m));
   }
 
   void on_recv(recv_handle_t handle) {
     recv_handle_ = std::move(handle);
+  }
+
+  void sync_time(timestamps_t ts) {
+    detail::message m;
+    m.src = addr_;
+    m.dest = ADDR_BROADCAST;
+    m.seq = seq_++;
+    m.ttl = TTL_DEFAULT;
+    m.ts = ts;
+    broadcast(std::move(m));
+    this->ts_ = ts;
   }
 
  private:
@@ -65,8 +77,8 @@ class mesh : detail::noncopyable {
   }
 
   void dispatch(detail::message message) {
-    MESH_CORE_LOGD("=>: self: 0x%02X, src: 0x%02X, dest: 0x%02X, seq: %u, ttl: %u, data: %s", addr_, message.src, message.dest, message.seq,
-                   message.ttl, message.data.c_str());
+    MESH_CORE_LOGD("=>: self: 0x%02X, src: 0x%02X, dest: 0x%02X, seq: %u, ttl: %u, ts: 0x%04X, data: %s", addr_, message.src, message.dest,
+                   message.seq, message.ttl, message.ts, message.data.c_str());
     if (message.src == this->addr_) {  // drop message
       MESH_CORE_LOGD("drop: self message");
       return;
@@ -78,14 +90,18 @@ class mesh : detail::noncopyable {
     }
     auto uuid = message.cal_uuid();
     if (msg_uuid_cache_.exists(uuid)) {
-      MESH_CORE_LOGD("drop: msg is old, src: 0x%02X, seq: %u", message.src, message.seq);
+      MESH_CORE_LOGD("drop: msg is old, src: 0x%02X, seq: %u, uuid: 0x%08X", message.src, message.seq, uuid);
       return;
     }
 
-    if (message.dest == this->addr_) {
+    if (message.dest == this->addr_ || message.dest == ADDR_BROADCAST) {
       msg_uuid_cache_.put(uuid);
-      if (recv_handle_) {
+      if (message.dest == this->addr_ && recv_handle_) {
         recv_handle_(message.src, std::move(message.data));
+      } else {  // is broadcast
+        // sync timestamps
+        MESH_CORE_LOGD("sync ts: ttl=0, src: 0x%02X, seq: %u", message.src, message.seq);
+        ts_ = message.ts;
       }
     } else {
       if (--message.ttl == 0) {  // drop message
@@ -105,10 +121,11 @@ class mesh : detail::noncopyable {
 
  private:
   recv_handle_t recv_handle_;
-  addr_t addr_ = ADDR_DEFAULT;
-  seq_t seq_ = 0;
+  int addr_{ADDR_DEFAULT};
+  seq_t seq_{};
   detail::lru_record<msg_uuid_t> msg_uuid_cache_{LRU_RECORD_SIZE};
-  Impl* impl_ = nullptr;
+  timestamps_t ts_{};
+  Impl* impl_{};
 };
 
 }  // namespace mesh_core

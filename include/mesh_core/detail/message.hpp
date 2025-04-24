@@ -20,6 +20,7 @@ struct message : detail::copyable {
   addr_t dest{};
   seq_t seq{};
   ttl_t ttl{};
+  timestamps_t ts{};
   // data
   data_t data;
 
@@ -27,8 +28,12 @@ struct message : detail::copyable {
   static const int header_size = sizeof(src) + sizeof(dest) + sizeof(seq) + sizeof(ttl);
 
  public:
-  msg_uuid_t cal_uuid() {
-    return (src << sizeof(seq)) + seq;
+  msg_uuid_t cal_uuid() const {
+    static_assert(std::is_same<msg_uuid_t, uint32_t>::value, "");
+    static_assert(std::is_same<ttl_t, uint8_t>::value, "");
+    static_assert(std::is_same<timestamps_t, uint16_t>::value, "");
+    // uuid: {src|seq|ts}
+    return (src << 24) | (seq << 16) | (ts);
   }
 
   std::string serialize() {
@@ -38,6 +43,7 @@ struct message : detail::copyable {
     payload.append((char*)&dest, sizeof(dest));
     payload.append((char*)&seq, sizeof(seq));
     payload.append((char*)&ttl, sizeof(ttl));
+    payload.append((char*)&ts, sizeof(ts));
     payload.append(data);
     return payload;
   }
@@ -58,6 +64,8 @@ struct message : detail::copyable {
     p += sizeof(seq);
     msg.ttl = *(decltype(ttl)*)p;
     p += sizeof(ttl);
+    msg.ts = *(decltype(ts)*)p;
+    p += sizeof(ts);
 
     msg.data.assign(p, pend - p);
     ok = true;

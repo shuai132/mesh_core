@@ -23,6 +23,12 @@ struct Impl {
     recv_handle = std::move(handle);
   }
 
+  static mesh_core::timestamps_t get_timestamps_ms() {
+    auto now = std::chrono::system_clock::now();
+    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
+    return static_cast<uint16_t>(ms & 0xFFFF);
+  }
+
   static void run_delay(std::function<void()> handle, int ms) {
     auto timer = std::make_shared<asio::steady_timer>(s_io_context);
     timer->expires_after(std::chrono::milliseconds(ms));
@@ -55,7 +61,7 @@ static void start_recv(Impl& impl) {
   s_socket.async_receive_from(asio::buffer(recv_buffer), sender_endpoint, [&](const asio::error_code& ec, std::size_t bytes_received) {
     if (!ec) {
       std::string message = std::string(recv_buffer.data(), bytes_received);
-      MESH_CORE_LOGD("UPD message: %s", message.c_str());
+      MESH_CORE_LOGD("UPD message: %s, size: %zu", message.c_str(), message.size());
       impl.recv_handle(message);
       start_recv(impl);
     } else {

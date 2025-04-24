@@ -24,10 +24,17 @@ struct Impl {
   }
 
   /**
+   * @return millisecond timestamps
+   */
+  static mesh_core::timestamps_t get_timestamps_ms() {
+    return 0;
+  }
+
+  /**
    * @param handle call it after `ms`
    * @param ms milliseconds
    */
-  void run_delay(std::function<void()> handle, int ms) {
+  static void run_delay(std::function<void()> handle, int ms) {
     (void)(handle);
     (void)(ms);
   }

@@ -17,7 +17,8 @@ using addr_t = uint8_t;
 using seq_t = uint8_t;
 using ttl_t = uint8_t;
 using data_t = std::string;
-using msg_uuid_t = uint16_t;
+using timestamps_t = uint16_t;
+using msg_uuid_t = uint32_t;
 
 /// assert
 static_assert(std::is_trivial<addr_t>::value, "");
@@ -31,6 +32,7 @@ using recv_handle_t = std::function<void(addr_t, data_t)>;
 
 /// default value
 const addr_t ADDR_DEFAULT = 0x00;
+const addr_t ADDR_BROADCAST = 0xFF;
 const ttl_t TTL_DEFAULT = 5;
 const int LRU_RECORD_SIZE = 32;
 
