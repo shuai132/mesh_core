@@ -124,7 +124,7 @@ class mesh : detail::noncopyable {
           [this, message = std::move(message)]() mutable {
             broadcast(std::move(message));
           },
-          impl_->random(10, 300));
+          impl_->random(DELAY_MIN, DELAY_MAX));
     }
   }
 

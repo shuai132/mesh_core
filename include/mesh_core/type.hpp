@@ -32,9 +32,11 @@ using recv_handle_t = std::function<void(addr_t, data_t)>;
 using time_sync_handle_t = std::function<void(timestamps_t)>;
 
 /// default value
-const addr_t ADDR_DEFAULT = MESH_CORE_BROADCAST_ADDR_DEFAULT;
-const addr_t ADDR_BROADCAST = MESH_CORE_BROADCAST_ADDR_BROADCAST;
-const ttl_t TTL_DEFAULT = MESH_CORE_BROADCAST_TTL_DEFAULT;
-const int LRU_RECORD_SIZE = MESH_CORE_BROADCAST_LRU_RECORD_SIZE;
+const addr_t ADDR_DEFAULT = MESH_CORE_ADDR_DEFAULT;
+const addr_t ADDR_BROADCAST = MESH_CORE_ADDR_BROADCAST;
+const ttl_t TTL_DEFAULT = MESH_CORE_TTL_DEFAULT;
+const int LRU_RECORD_SIZE = MESH_CORE_LRU_RECORD_SIZE;
+const int DELAY_MIN = MESH_CORE_DELAY_MS_MIN;
+const int DELAY_MAX = MESH_CORE_DELAY_MS_MAX;
 
 }  // namespace mesh_core
