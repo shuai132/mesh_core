@@ -4,7 +4,6 @@
 #include "asio.hpp"
 #include "assert_def.h"
 #include "mesh_core.hpp"
-#include "mesh_core/detail/log.h"
 
 static asio::io_context s_io_context;
 

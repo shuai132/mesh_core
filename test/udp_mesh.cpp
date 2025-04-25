@@ -4,7 +4,6 @@
 
 #include "asio.hpp"
 #include "mesh_core.hpp"
-#include "mesh_core/detail/log.h"
 
 static asio::io_context s_io_context;
 static asio::ip::udp::socket s_socket(s_io_context);
@@ -91,6 +90,9 @@ int main() {
   mesh.on_recv([](addr_t addr, const data_t& data) {
     MESH_CORE_LOG("addr: 0x%02X, data: %s", addr, data.c_str());
   });
+  mesh.on_sync_time([](timestamps_t ts) {
+    MESH_CORE_LOG("on_sync_time: 0x%04X", ts);
+  });
 
   init_udp_impl(impl);
 
@@ -100,12 +102,24 @@ int main() {
       std::string message;
       std::cout << "to addr: ";
       std::cin >> dest;
-      std::cout << "message: ";
-      std::cin >> message;
-      printf("send to addr: 0x%02X, message: %s\n", dest, message.c_str());
-      asio::post(s_io_context, [=, &mesh] {
-        mesh.send(dest, message);
-      });
+
+      /// test sync_time
+      if (dest == -1) {
+        asio::post(s_io_context, [&mesh] {
+          mesh.sync_time();
+          MESH_CORE_LOG("time: 0x%04X", mesh.get_timestamps());
+        });
+        continue;
+      }
+      /// test send message
+      else {
+        std::cout << "message: ";
+        std::cin >> message;
+        printf("send to addr: 0x%02X, message: %s\n", dest, message.c_str());
+        asio::post(s_io_context, [=, &mesh] {
+          mesh.send(dest, message);
+        });
+      }
     }
   }).detach();
 

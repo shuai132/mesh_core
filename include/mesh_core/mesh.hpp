@@ -47,6 +47,14 @@ class mesh : detail::noncopyable {
     recv_handle_ = std::move(handle);
   }
 
+  void on_sync_time(time_sync_handle_t handle) {
+    time_sync_handle_ = std::move(handle);
+  }
+
+  timestamps_t get_timestamps() {
+    return ts_;
+  }
+
   void sync_time() {
     ts_ = impl_->get_timestamps_ms();
     detail::message m;
@@ -56,10 +64,6 @@ class mesh : detail::noncopyable {
     m.ttl = TTL_DEFAULT;
     m.ts = ts_;
     broadcast(std::move(m));
-  }
-
-  void on_sync_time(time_sync_handle_t handle) {
-    time_sync_handle_ = std::move(handle);
   }
 
  private:
