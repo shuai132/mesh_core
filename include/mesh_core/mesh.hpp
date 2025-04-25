@@ -47,15 +47,19 @@ class mesh : detail::noncopyable {
     recv_handle_ = std::move(handle);
   }
 
-  void sync_time(timestamps_t ts) {
+  void sync_time() {
+    ts_ = impl_->get_timestamps_ms();
     detail::message m;
     m.src = addr_;
     m.dest = ADDR_BROADCAST;
     m.seq = seq_++;
     m.ttl = TTL_DEFAULT;
-    m.ts = ts;
+    m.ts = ts_;
     broadcast(std::move(m));
-    this->ts_ = ts;
+  }
+
+  void on_sync_time(time_sync_handle_t handle) {
+    time_sync_handle_ = std::move(handle);
   }
 
  private:
@@ -96,12 +100,13 @@ class mesh : detail::noncopyable {
 
     if (message.dest == this->addr_ || message.dest == ADDR_BROADCAST) {
       msg_uuid_cache_.put(uuid);
-      if (message.dest == this->addr_ && recv_handle_) {
-        recv_handle_(message.src, std::move(message.data));
+      if (message.dest == this->addr_) {
+        if (recv_handle_) recv_handle_(message.src, std::move(message.data));
       } else {  // is broadcast
         // sync timestamps
         MESH_CORE_LOGD("sync ts: ttl=0, src: 0x%02X, seq: %u", message.src, message.seq);
         ts_ = message.ts;
+        if (time_sync_handle_) time_sync_handle_(ts_);
       }
     } else {
       if (--message.ttl == 0) {  // drop message
@@ -121,7 +126,8 @@ class mesh : detail::noncopyable {
 
  private:
   recv_handle_t recv_handle_;
-  int addr_{ADDR_DEFAULT};
+  time_sync_handle_t time_sync_handle_;
+  addr_t addr_{ADDR_DEFAULT};
   seq_t seq_{};
   detail::lru_record<msg_uuid_t> msg_uuid_cache_{LRU_RECORD_SIZE};
   timestamps_t ts_{};
