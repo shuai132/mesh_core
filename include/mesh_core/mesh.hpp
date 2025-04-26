@@ -130,7 +130,7 @@ class mesh : detail::noncopyable {
   }
 
   uint16_t random(uint16_t l, uint16_t r) {
-    return utils::time_based_random(impl_->get_timestamps_ms(), l, r);
+    return utils::time_based_random(impl_->get_timestamps_ms() + addr_ + seq_, l, r);
   }
 
  private:
