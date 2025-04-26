@@ -6,7 +6,6 @@
  * NOTE:
  * 1. broadcast and recv_handle should ensure packet is complete
  * 2. all methods can be static
- * 3. `run_delay` and `random` is optional, but it is strongly recommended to implement them.
  */
 struct Impl {
   /**
@@ -37,15 +36,6 @@ struct Impl {
   static void run_delay(std::function<void()> handle, int ms) {
     (void)(handle);
     (void)(ms);
-  }
-
-  /**
-   * @return value between `l` and `r`
-   */
-  static int random(int l, int r) {
-    (void)(l);
-    (void)(r);
-    return 0;
   }
 };
 

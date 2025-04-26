@@ -1,9 +1,9 @@
-#include <random>
 #include <utility>
 
 #include "asio.hpp"
 #include "assert_def.h"
 #include "mesh_core.hpp"
+#include "mesh_core/utils.hpp"
 
 static asio::io_context s_io_context;
 
@@ -36,13 +36,6 @@ struct Impl {
       timer = nullptr;
     });
   }
-
-  static int random(int l, int r) {
-    static std::random_device rd;
-    static std::mt19937 gen(rd());
-    std::uniform_int_distribution<int> dist(l, r);
-    return dist(gen);
-  }
 };
 
 static void test_message() {
@@ -54,9 +47,18 @@ static void test_message() {
   ASSERT(uuid == 0x12345678);
 }
 
+static void test_random() {
+  for (int i = 0; i < 10; ++i) {
+    auto val = mesh_core::utils::time_based_random(0x1234 + i, 100, 300);
+    MESH_CORE_LOG("random: 0x%04X, %u", val, val);
+    ASSERT(val >= 100 && val <= 300);
+  }
+}
+
 int main() {
   MESH_CORE_LOG("version: %d", MESH_CORE_VERSION);
   test_message();
+  test_random();
 
   using namespace mesh_core;
   Impl impl;

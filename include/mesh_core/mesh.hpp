@@ -10,6 +10,7 @@
 #include "mesh_core/detail/message.hpp"
 #include "mesh_core/detail/noncopyable.hpp"
 #include "mesh_core/type.hpp"
+#include "mesh_core/utils.hpp"
 
 // std
 #include <functional>
@@ -124,8 +125,12 @@ class mesh : detail::noncopyable {
           [this, message = std::move(message)]() mutable {
             broadcast(std::move(message));
           },
-          impl_->random(DELAY_MIN, DELAY_MAX));
+          random(DELAY_MIN, DELAY_MAX));
     }
+  }
+
+  uint16_t random(uint16_t l, uint16_t r) {
+    return utils::time_based_random(impl_->get_timestamps_ms(), l, r);
   }
 
  private:
