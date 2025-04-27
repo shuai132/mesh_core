@@ -33,14 +33,19 @@ class mesh : detail::noncopyable {
     return addr_;
   }
 
-  void send(addr_t addr, data_t msg) {
+  void send(addr_t addr, data_t data) {
+    if (data.size() > detail::message::SizeMax) {
+      MESH_CORE_LOGE("data size > %d", detail::message::SizeMax);
+      return;
+    }
     detail::message m;
     m.src = addr_;
     m.dest = addr;
     m.seq = seq_++;
     m.ttl = TTL_DEFAULT;
-    m.ts = impl_->get_timestamps_ms();
-    m.data = std::move(msg);
+    m.ts = impl_->get_timestamp_ms();
+    m.data = std::move(data);
+    m.finalize();
     broadcast(std::move(m));
   }
 
@@ -52,12 +57,12 @@ class mesh : detail::noncopyable {
     time_sync_handle_ = std::move(handle);
   }
 
-  timestamps_t get_timestamps() {
+  timestamp_t get_timestamp() {
     return ts_;
   }
 
   void sync_time() {
-    ts_ = impl_->get_timestamps_ms();
+    ts_ = impl_->get_timestamp_ms();
     detail::message m;
     m.src = addr_;
     m.dest = ADDR_BROADCAST;
@@ -75,14 +80,19 @@ class mesh : detail::noncopyable {
       if (ok) {
         this->dispatch(std::move(msg));
       } else {
-        MESH_CORE_LOGE("message deserialize error");
+        MESH_CORE_LOGE("deserialize error");
       }
     });
   }
 
   void broadcast(detail::message data) {
-    auto payload = data.serialize();
-    impl_->broadcast(payload);
+    bool ok;
+    auto payload = data.serialize(ok);
+    if (ok) {
+      impl_->broadcast(payload);
+    } else {
+      MESH_CORE_LOGE("data size > %d", detail::message::SizeMax);
+    }
   }
 
   void dispatch(detail::message message) {
@@ -108,7 +118,7 @@ class mesh : detail::noncopyable {
       if (message.dest == this->addr_) {
         if (recv_handle_) recv_handle_(message.src, std::move(message.data));
       } else {  // is broadcast
-        // sync timestamps
+        // sync timestamp
         MESH_CORE_LOGD("sync ts: ttl=0, src: 0x%02X, seq: %u", message.src, message.seq);
         ts_ = message.ts;
         if (time_sync_handle_) time_sync_handle_(ts_);
@@ -130,7 +140,7 @@ class mesh : detail::noncopyable {
   }
 
   uint16_t random(uint16_t l, uint16_t r) {
-    return utils::time_based_random(impl_->get_timestamps_ms() + addr_ + seq_, l, r);
+    return utils::time_based_random(impl_->get_timestamp_ms() + addr_ + seq_, l, r);
   }
 
  private:
@@ -139,7 +149,7 @@ class mesh : detail::noncopyable {
   addr_t addr_{ADDR_DEFAULT};
   seq_t seq_{};
   detail::lru_record<msg_uuid_t> msg_uuid_cache_{LRU_RECORD_SIZE};
-  timestamps_t ts_{};
+  timestamp_t ts_{};
   Impl* impl_{};
 };
 

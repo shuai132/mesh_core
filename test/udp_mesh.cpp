@@ -21,7 +21,7 @@ struct Impl {
     recv_handle = std::move(handle);
   }
 
-  static mesh_core::timestamps_t get_timestamps_ms() {
+  static mesh_core::timestamp_t get_timestamp_ms() {
     auto now = std::chrono::system_clock::now();
     auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
     return static_cast<uint16_t>(ms & 0xFFFF);
@@ -82,7 +82,7 @@ int main() {
   mesh.on_recv([](addr_t addr, const data_t& data) {
     MESH_CORE_LOG("addr: 0x%02X, data: %s", addr, data.c_str());
   });
-  mesh.on_sync_time([](timestamps_t ts) {
+  mesh.on_sync_time([](timestamp_t ts) {
     MESH_CORE_LOG("on_sync_time: 0x%04X", ts);
   });
 
@@ -99,7 +99,7 @@ int main() {
       if (dest == -1) {
         asio::post(s_io_context, [&mesh] {
           mesh.sync_time();
-          MESH_CORE_LOG("time: 0x%04X", mesh.get_timestamps());
+          MESH_CORE_LOG("time: 0x%04X", mesh.get_timestamp());
         });
         continue;
       }

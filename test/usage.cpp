@@ -23,9 +23,9 @@ struct Impl {
   }
 
   /**
-   * @return millisecond timestamps
+   * @return millisecond timestamp
    */
-  static mesh_core::timestamps_t get_timestamps_ms() {
+  static mesh_core::timestamp_t get_timestamp_ms() {
     return 0;
   }
 

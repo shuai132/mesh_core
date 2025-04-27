@@ -22,7 +22,7 @@ struct Impl {
     recv_handles.push_back(std::move(handle));
   }
 
-  static mesh_core::timestamps_t get_timestamps_ms() {
+  static mesh_core::timestamp_t get_timestamp_ms() {
     auto now = std::chrono::system_clock::now();
     auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
     return static_cast<uint16_t>(ms & 0xFFFF);

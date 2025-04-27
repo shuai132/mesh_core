@@ -17,7 +17,7 @@ using addr_t = uint8_t;
 using seq_t = uint8_t;
 using ttl_t = uint8_t;
 using data_t = std::string;
-using timestamps_t = uint16_t;
+using timestamp_t = uint16_t;
 using msg_uuid_t = uint32_t;
 
 /// assert
@@ -29,7 +29,7 @@ static_assert(sizeof(msg_uuid_t) >= sizeof(addr_t) + sizeof(seq_t), "msg_uuid: [
 
 /// handle
 using recv_handle_t = std::function<void(addr_t, data_t)>;
-using time_sync_handle_t = std::function<void(timestamps_t)>;
+using time_sync_handle_t = std::function<void(timestamp_t)>;
 
 /// default value
 const addr_t ADDR_DEFAULT = MESH_CORE_ADDR_DEFAULT;
