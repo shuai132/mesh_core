@@ -25,12 +25,33 @@ class mesh : detail::noncopyable {
     init();
   };
 
+  /**
+   *
+   * @param addr
+   */
   void set_addr(addr_t addr) {
-    addr_ = addr;
+    if (addr >= MESH_CORE_ADDR_RESERVED_BEGIN) {
+      MESH_CORE_LOGD("addr error");
+    } else {
+      addr_ = addr;
+    }
   }
 
   addr_t get_addr() {
     return addr_;
+  }
+
+  void enable_routing(bool enable) {
+    enable_routing_ = enable;
+  }
+
+  void router_only() {
+    addr_ = MESH_CORE_ADDR_ROUTER;
+    enable_routing(true);
+  }
+
+  bool is_router_only() {
+    return addr_ == MESH_CORE_ADDR_ROUTER;
   }
 
   void send(addr_t addr, data_t data) {
@@ -65,7 +86,7 @@ class mesh : detail::noncopyable {
     ts_ = impl_->get_timestamp_ms();
     detail::message m;
     m.src = addr_;
-    m.dest = ADDR_BROADCAST;
+    m.dest = MESH_CORE_ADDR_BROADCAST;
     m.seq = seq_++;
     m.ttl = TTL_DEFAULT;
     m.ts = ts_;
@@ -104,7 +125,7 @@ class mesh : detail::noncopyable {
     }
 
     if (message.ttl > TTL_DEFAULT) {  // message error
-      MESH_CORE_LOGE("drop: ttl error: %u", message.ttl);
+      MESH_CORE_LOGD("drop: ttl error: %u", message.ttl);
       return;
     }
     auto uuid = message.cal_uuid();
@@ -113,23 +134,27 @@ class mesh : detail::noncopyable {
       return;
     }
 
-    if (message.dest == this->addr_ || message.dest == ADDR_BROADCAST) {
-      msg_uuid_cache_.put(uuid);
-      if (message.dest == this->addr_) {
-        if (recv_handle_) recv_handle_(message.src, std::move(message.data));
-      } else {  // is broadcast
-        // sync timestamp
-        MESH_CORE_LOGD("sync ts: ttl=0, src: 0x%02X, seq: %u", message.src, message.seq);
-        ts_ = message.ts;
-        if (time_sync_handle_) time_sync_handle_(ts_);
-      }
-    } else {
+    msg_uuid_cache_.put(uuid);
+    bool need_rebroadcast = true;
+    if (message.dest == this->addr_) {
+      need_rebroadcast = false;
+      if (recv_handle_) recv_handle_(message.src, std::move(message.data));
+    } else if (message.dest == MESH_CORE_ADDR_BROADCAST) {
+      if (recv_handle_) recv_handle_(message.src, message.data);  // do not move data
+    } else if (message.dest == MESH_CORE_ADDR_SYNC_TIME) {
+      MESH_CORE_LOGD("sync ts: ttl=0, src: 0x%02X, seq: %u", message.src, message.seq);
+      ts_ = message.ts;
+      if (time_sync_handle_) time_sync_handle_(ts_);
+    }
+
+    /// rebroadcast message
+    if (enable_routing_ && need_rebroadcast) {
       if (--message.ttl == 0) {  // drop message
         MESH_CORE_LOGD("drop: ttl=0, src: 0x%02X, seq: %u", message.src, message.seq);
         return;
       }
 
-      MESH_CORE_LOGD("rebroadcast message, ttl = %u", message.ttl);
+      MESH_CORE_LOGD("rebroadcast: ttl = %u", message.ttl);
       msg_uuid_cache_.put(uuid);
       impl_->run_delay(
           [this, message = std::move(message)]() mutable {
@@ -146,10 +171,11 @@ class mesh : detail::noncopyable {
  private:
   recv_handle_t recv_handle_;
   time_sync_handle_t time_sync_handle_;
-  addr_t addr_{ADDR_DEFAULT};
+  addr_t addr_{MESH_CORE_ADDR_ROUTER};
   seq_t seq_{};
   detail::lru_record<msg_uuid_t> msg_uuid_cache_{LRU_RECORD_SIZE};
   timestamp_t ts_{};
+  bool enable_routing_{true};
   Impl* impl_{};
 };
 

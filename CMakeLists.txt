@@ -14,7 +14,7 @@ add_library(${PROJECT_NAME} INTERFACE)
 target_include_directories(${PROJECT_NAME} INTERFACE include)
 
 if (MESH_CORE_BUILD_TEST)
-    # add_definitions(-DMESH_CORE_LOG_SHOW_DEBUG)
+    add_definitions(-DMESH_CORE_LOG_SHOW_DEBUG)
     # add_definitions(-DMESH_CORE_LOG_SHOW_VERBOSE)
 
     message(STATUS "ASIO_PATH: $ENV{ASIO_PATH}")

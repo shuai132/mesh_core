@@ -73,6 +73,28 @@ int main() {
 }
 ```
 
+## Protocol
+
+```text
+/// ┌─────────┬──────────────┬───────────────────┬───────────────────────────────┐
+/// │ Bytes   │ Field        │ Default/Example   │ Description                   │
+/// ├─────────┼──────────────┼───────────────────┼───────────────────────────────┤
+/// │ 1       │ head         │ 0x3C              │ Header identifier: Mesh Core  │
+/// │ 1       │ ver          │ 0x00              │ Protocol version              │
+/// │ 1       │ len          │ 0x00              │ Payload length in bytes       │
+/// ├─────────┼──────────────┼───────────────────┼───────────────────────────────┤
+/// │ 1       │ src          │ 0x00              │ Source address                │
+/// │ 1       │ dest         │ 0x00              │ Destination address           │
+/// │ 1       │ seq          │ 0x00              │ Sequence number               │
+/// │ 1       │ ttl          │ 0x00              │ Time To Live (hops)           │
+/// │ 2       │ ts           │ 0x0000            │ Timestamp (16-bit)            │
+/// ├─────────┼──────────────┼───────────────────┼───────────────────────────────┤
+/// │ n       │ data         │ [variable]        │ Payload data (len bytes)      │
+/// │ 2       │ crc          │ 0x0000            │ CRC-16 of all preceding fields│
+/// └─────────┴──────────────┴───────────────────┴───────────────────────────────┘
+/// 11 bytes without data
+```
+
 * unittest
 
   [test/unittest.cpp](test/unittest.cpp)

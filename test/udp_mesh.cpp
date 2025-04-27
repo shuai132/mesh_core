@@ -37,7 +37,17 @@ struct Impl {
   }
 };
 
+static void print_hex(const void* data, size_t size) {
+  const auto* bytes = (const unsigned char*)data;
+  for (size_t i = 0; i < size; ++i) {
+    L_O_G_PRINTF("%02X ", bytes[i]);
+  }
+  L_O_G_PRINTF("\n");
+}
+
 static void udp_broadcast(std::string data) {
+  MESH_CORE_LOGD("UPD send size: %zu", data.size());
+  print_hex(data.data(), data.size());
   s_socket.set_option(asio::socket_base::broadcast(true));
   s_socket.async_send_to(asio::buffer(data), broadcast_endpoint, [](const asio::error_code& ec, std::size_t) {
     if (ec) {
@@ -52,7 +62,8 @@ static void start_recv(Impl& impl) {
   s_socket.async_receive_from(asio::buffer(recv_buffer), sender_endpoint, [&](const asio::error_code& ec, std::size_t bytes_received) {
     if (!ec) {
       std::string message = std::string(recv_buffer.data(), bytes_received);
-      MESH_CORE_LOGD("UPD message: %s, size: %zu", message.c_str(), message.size());
+      MESH_CORE_LOGD("UPD recv size: %zu", message.size());
+      print_hex(message.data(), message.size());
       impl.recv_handle(message);
       start_recv(impl);
     } else {
@@ -90,21 +101,33 @@ int main() {
 
   std::thread([&] {
     for (;;) {
-      int dest;
+      int input;
       std::string message;
       std::cout << "to addr: ";
-      std::cin >> dest;
+      std::cin >> input;
 
       /// test sync_time
-      if (dest == -1) {
+      if (input == -1) {
         asio::post(s_io_context, [&mesh] {
           mesh.sync_time();
           MESH_CORE_LOG("time: 0x%04X", mesh.get_timestamp());
         });
         continue;
       }
+
+      /// test broadcast
+      else if (input == -2) {
+        std::cout << "message: ";
+        std::cin >> message;
+        printf("send broadcast: 0x%02X, message: %s\n", MESH_CORE_ADDR_BROADCAST, message.c_str());
+        asio::post(s_io_context, [=, &mesh] {
+          mesh.send(MESH_CORE_ADDR_BROADCAST, message);
+        });
+      }
+
       /// test send message
       else {
+        addr_t dest = input;
         std::cout << "message: ";
         std::cin >> message;
         printf("send to addr: 0x%02X, message: %s\n", dest, message.c_str());
