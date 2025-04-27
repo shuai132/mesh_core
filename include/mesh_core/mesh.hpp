@@ -34,8 +34,8 @@ class mesh : detail::noncopyable {
   }
 
   void send(addr_t addr, data_t data) {
-    if (data.size() > detail::message::SizeMax) {
-      MESH_CORE_LOGE("data size > %d", detail::message::SizeMax);
+    if (data.size() > detail::message::DataSizeMax) {
+      MESH_CORE_LOGE("data size > %d", detail::message::DataSizeMax);
       return;
     }
     detail::message m;
@@ -91,7 +91,7 @@ class mesh : detail::noncopyable {
     if (ok) {
       impl_->broadcast(payload);
     } else {
-      MESH_CORE_LOGE("data size > %d", detail::message::SizeMax);
+      MESH_CORE_LOGE("data size > %d", detail::message::DataSizeMax);
     }
   }
 

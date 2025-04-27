@@ -50,10 +50,11 @@ struct message : detail::copyable {
   // clang-format off
   // message min size(without data): 11 bytes
   static const uint8_t SizeMin = sizeof(head) + sizeof(ver) + sizeof(len) + sizeof(src) + sizeof(dest) + sizeof(seq) + sizeof(ttl) + sizeof(ts) + sizeof(crc);
+  // clang-format on
   static const uint8_t SizeNotInLen = sizeof(head) + sizeof(ver);
   // message data max size: 252 bytes
-  static const uint8_t SizeMax = (sizeof(len) << 8) - SizeNotInLen - sizeof(crc);
-  // clang-format on
+  static const uint8_t DataSizeMax = (sizeof(len) << 8) - SizeNotInLen - sizeof(crc);
+  static const uint16_t SizeMax = SizeMin + DataSizeMax;
 
  public:
   msg_uuid_t cal_uuid() const {
@@ -69,7 +70,7 @@ struct message : detail::copyable {
   }
 
   std::string serialize(bool& ok) {
-    if (data.size() > SizeMax) {
+    if (data.size() > DataSizeMax) {
       ok = false;
       return {};
     }
@@ -92,7 +93,8 @@ struct message : detail::copyable {
 
   static message deserialize(const std::string& payload, bool& ok) {
     message msg;
-    if (payload.size() < SizeMin) {
+    if (payload.size() < SizeMin || payload.size() > SizeMax) {
+      MESH_CORE_LOGD("size error");
       ok = false;
       return msg;
     }
@@ -101,18 +103,21 @@ struct message : detail::copyable {
     msg.head = *(decltype(head)*)p;
     p += sizeof(head);
     if (msg.head != MESH_CORE_MSG_MAGIC) {
+      MESH_CORE_LOGD("head error");
       ok = false;
       return msg;
     }
     msg.ver = *(decltype(ver)*)p;
     p += sizeof(ver);
     if (msg.ver != MESH_CORE_PROTO_VER) {
+      MESH_CORE_LOGD("version error");
       ok = false;
       return msg;
     }
     msg.len = *(decltype(len)*)p;
     p += sizeof(len);
     if (msg.len != payload.size() - SizeNotInLen) {
+      MESH_CORE_LOGD("size error");
       ok = false;
       return msg;
     }
@@ -131,6 +136,7 @@ struct message : detail::copyable {
     msg.crc = *(uint16_t*)(pend - sizeof(crc));
     uint16_t crc = utils::crc16(payload.data(), payload.size() - sizeof(crc));
     if (msg.crc != crc) {
+      MESH_CORE_LOGD("crc error");
       ok = false;
       return msg;
     }
