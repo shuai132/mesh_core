@@ -119,22 +119,27 @@ class mesh : detail::noncopyable {
   void dispatch(detail::message message) {
     MESH_CORE_LOGD("=>: self: 0x%02X, src: 0x%02X, dest: 0x%02X, seq: %u, ttl: %u, ts: 0x%04X, data: %s", addr_, message.src, message.dest,
                    message.seq, message.ttl, message.ts, message.data.c_str());
-    if (message.src == this->addr_) {  // drop message
+    /// self check
+    if (message.src == this->addr_) {
       MESH_CORE_LOGD("drop: self message");
       return;
     }
 
-    if (message.ttl > TTL_DEFAULT) {  // message error
+    /// ttl check
+    if (message.ttl > TTL_DEFAULT) {
       MESH_CORE_LOGD("drop: ttl error: %u", message.ttl);
       return;
     }
+
+    /// cache manager
     auto uuid = message.cal_uuid();
     if (msg_uuid_cache_.exists(uuid)) {
       MESH_CORE_LOGD("drop: msg is old, src: 0x%02X, seq: %u, uuid: 0x%08X", message.src, message.seq, uuid);
       return;
     }
-
     msg_uuid_cache_.put(uuid);
+
+    /// special message check
     bool need_rebroadcast = true;
     if (message.dest == this->addr_) {
       need_rebroadcast = false;
@@ -155,7 +160,6 @@ class mesh : detail::noncopyable {
       }
 
       MESH_CORE_LOGD("rebroadcast: ttl = %u", message.ttl);
-      msg_uuid_cache_.put(uuid);
       impl_->run_delay(
           [this, message = std::move(message)]() mutable {
             broadcast(std::move(message));
