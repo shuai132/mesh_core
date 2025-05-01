@@ -1,0 +1,20 @@
+{
+  "name": "mesh_core",
+  "description": "a lightweight mesh solution, works best for small networks.",
+  "keywords": "mesh,lora",
+  "authors": {
+    "name": "shuai132",
+    "maintainer": true
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/shuai132/mesh_core.git"
+  },
+  "version": "0.0.1",
+  "build": {
+    "srcDir": "_",
+    "flags": [
+      "-I include"
+    ]
+  }
+}
