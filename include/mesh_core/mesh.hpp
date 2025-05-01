@@ -110,7 +110,7 @@ class mesh : detail::noncopyable {
     bool ok;
     auto payload = data.serialize(ok);
     if (ok) {
-      impl_->broadcast(payload);
+      impl_->broadcast(std::move(payload));
     } else {
       MESH_CORE_LOGE("data size > %d", detail::message::DataSizeMax);
     }

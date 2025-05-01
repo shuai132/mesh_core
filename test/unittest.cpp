@@ -4,6 +4,7 @@
 #include "assert_def.h"
 #include "mesh_core.hpp"
 #include "mesh_core/utils.hpp"
+#include "utils.hpp"
 
 static asio::io_context s_io_context;
 
@@ -39,12 +40,29 @@ struct Impl {
 };
 
 static void test_message() {
-  mesh_core::detail::message m;
-  m.src = 0x12;
-  m.seq = 0x34;
-  m.ts = 0x5678;
-  auto uuid = m.cal_uuid();
-  ASSERT(uuid == 0x12345678);
+  {
+    // test cal_uuid
+    mesh_core::detail::message m;
+    m.src = 0x12;
+    m.seq = 0x34;
+    m.ts = 0x5678;
+    auto uuid = m.cal_uuid();
+    ASSERT(uuid == 0x12345678);
+  }
+  {
+    // test serialize
+    mesh_core::detail::message m;
+    m.data = "hello";
+    m.finalize();
+    bool ok;
+    auto payload = m.serialize(ok);
+    print_hex("payload", payload.data(), payload.size());
+    ASSERT(ok);
+    auto m2 = mesh_core::detail::message::deserialize(payload, ok);
+    ASSERT(ok);
+    ASSERT(m.data == m2.data);
+    ASSERT(m.crc == m2.crc);
+  }
 }
 
 static void test_random() {
