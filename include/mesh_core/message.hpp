@@ -13,7 +13,6 @@
 #include <string>
 
 namespace mesh_core {
-namespace detail {
 
 /// ┌─────────┬──────────────┬───────────────────┬───────────────────────────────┐
 /// │ Bytes   │ Field        │ Default/Example   │ Description                   │
@@ -148,5 +147,4 @@ struct message : detail::copyable {
   }
 };
 
-}  // namespace detail
 }  // namespace mesh_core

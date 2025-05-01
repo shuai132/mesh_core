@@ -7,8 +7,8 @@
 #include "mesh_core/detail/copyable.hpp"
 #include "mesh_core/detail/log.h"
 #include "mesh_core/detail/lru_record.hpp"
-#include "mesh_core/detail/message.hpp"
 #include "mesh_core/detail/noncopyable.hpp"
+#include "mesh_core/message.hpp"
 #include "mesh_core/type.hpp"
 #include "mesh_core/utils.hpp"
 
@@ -18,6 +18,8 @@
 
 namespace mesh_core {
 
+using broadcast_interceptor_t = std::function<bool(message&)>;
+
 template <typename Impl>
 class mesh : detail::noncopyable {
  public:
@@ -26,8 +28,7 @@ class mesh : detail::noncopyable {
   };
 
   /**
-   *
-   * @param addr
+   * @param addr self addr
    */
   void set_addr(addr_t addr) {
     if (addr >= MESH_CORE_ADDR_RESERVED_BEGIN) {
@@ -55,11 +56,11 @@ class mesh : detail::noncopyable {
   }
 
   void send(addr_t addr, data_t data) {
-    if (data.size() > detail::message::DataSizeMax) {
-      MESH_CORE_LOGE("data size > %d", detail::message::DataSizeMax);
+    if (data.size() > message::DataSizeMax) {
+      MESH_CORE_LOGE("data size > %d", message::DataSizeMax);
       return;
     }
-    detail::message m;
+    message m;
     m.src = addr_;
     m.dest = addr;
     m.seq = seq_++;
@@ -84,7 +85,7 @@ class mesh : detail::noncopyable {
 
   void sync_time() {
     ts_ = impl_->get_timestamp_ms();
-    detail::message m;
+    message m;
     m.src = addr_;
     m.dest = MESH_CORE_ADDR_BROADCAST;
     m.seq = seq_++;
@@ -93,11 +94,18 @@ class mesh : detail::noncopyable {
     broadcast(std::move(m));
   }
 
+  /**
+   * @param interceptor return bool for should_continue
+   */
+  void set_broadcast_interceptor(broadcast_interceptor_t interceptor) {
+    broadcast_interceptor_ = std::move(interceptor);
+  }
+
  private:
   void init() {
     impl_->set_recv_handle([this](const std::string& payload) {
       bool ok = false;
-      auto msg = detail::message::deserialize(payload, ok);
+      auto msg = message::deserialize(payload, ok);
       if (ok) {
         this->dispatch(std::move(msg));
       } else {
@@ -106,17 +114,27 @@ class mesh : detail::noncopyable {
     });
   }
 
-  void broadcast(detail::message data) {
+  void broadcast(message data) {
+    /// interceptor
+    if (broadcast_interceptor_) {
+      bool should_continue = broadcast_interceptor_(data);
+      if (!should_continue) {
+        MESH_CORE_LOGD("broadcast: interceptor abort");
+        return;
+      }
+    }
+
+    /// broadcast message
     bool ok;
     auto payload = data.serialize(ok);
     if (ok) {
       impl_->broadcast(std::move(payload));
     } else {
-      MESH_CORE_LOGE("data size > %d", detail::message::DataSizeMax);
+      MESH_CORE_LOGE("data size > %d", message::DataSizeMax);
     }
   }
 
-  void dispatch(detail::message message) {
+  void dispatch(message message) {
     MESH_CORE_LOGD("=>: self: 0x%02X, src: 0x%02X, dest: 0x%02X, seq: %u, ttl: %u, ts: 0x%04X, data: %s", addr_, message.src, message.dest,
                    message.seq, message.ttl, message.ts, message.data.c_str());
     /// self check
@@ -175,6 +193,7 @@ class mesh : detail::noncopyable {
  private:
   recv_handle_t recv_handle_;
   time_sync_handle_t time_sync_handle_;
+  broadcast_interceptor_t broadcast_interceptor_;
   addr_t addr_{MESH_CORE_ADDR_ROUTER};
   seq_t seq_{};
   detail::lru_record<msg_uuid_t> msg_uuid_cache_{LRU_RECORD_SIZE};

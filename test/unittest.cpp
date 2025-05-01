@@ -42,7 +42,7 @@ struct Impl {
 static void test_message() {
   {
     // test cal_uuid
-    mesh_core::detail::message m;
+    mesh_core::message m;
     m.src = 0x12;
     m.seq = 0x34;
     m.ts = 0x5678;
@@ -51,14 +51,14 @@ static void test_message() {
   }
   {
     // test serialize
-    mesh_core::detail::message m;
+    mesh_core::message m;
     m.data = "hello";
     m.finalize();
     bool ok;
     auto payload = m.serialize(ok);
     print_hex("payload", payload.data(), payload.size());
     ASSERT(ok);
-    auto m2 = mesh_core::detail::message::deserialize(payload, ok);
+    auto m2 = mesh_core::message::deserialize(payload, ok);
     ASSERT(ok);
     ASSERT(m.data == m2.data);
     ASSERT(m.crc == m2.crc);
