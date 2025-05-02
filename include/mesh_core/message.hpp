@@ -22,7 +22,7 @@ namespace mesh_core {
 /// │ 1       │ len          │ 0x00              │ Payload length in bytes       │
 /// ├─────────┼──────────────┼───────────────────┼───────────────────────────────┤
 /// │ 1       │ src          │ 0x00              │ Source address                │
-/// │ 1       │ dest         │ 0x00              │ Destination address           │
+/// │ 1       │ dst          │ 0x00              │ Destination address           │
 /// │ 1       │ seq          │ 0x00              │ Sequence number               │
 /// │ 1       │ ttl          │ 0x00              │ Time To Live (hops)           │
 /// │ 2       │ ts           │ 0x0000            │ Timestamp (16-bit)            │
@@ -37,7 +37,7 @@ struct message : detail::copyable {
   uint8_t ver = MESH_CORE_PROTO_VER;
   uint8_t len{};
   addr_t src{};
-  addr_t dest{};
+  addr_t dst{};
   seq_t seq{};
   ttl_t ttl{};
   timestamp_t ts{};
@@ -48,7 +48,7 @@ struct message : detail::copyable {
  public:
   // clang-format off
   // message min size(without data): 11 bytes
-  static const uint8_t SizeMin = sizeof(head) + sizeof(ver) + sizeof(len) + sizeof(src) + sizeof(dest) + sizeof(seq) + sizeof(ttl) + sizeof(ts) + sizeof(crc);
+  static const uint8_t SizeMin = sizeof(head) + sizeof(ver) + sizeof(len) + sizeof(src) + sizeof(dst) + sizeof(seq) + sizeof(ttl) + sizeof(ts) + sizeof(crc);
   // clang-format on
   static const uint8_t SizeNotInLen = sizeof(head) + sizeof(ver) + sizeof(len);
   // message data max size: 251 bytes
@@ -79,7 +79,7 @@ struct message : detail::copyable {
     payload.append((char*)&ver, sizeof(ver));
     payload.append((char*)&len, sizeof(len));
     payload.append((char*)&src, sizeof(src));
-    payload.append((char*)&dest, sizeof(dest));
+    payload.append((char*)&dst, sizeof(dst));
     payload.append((char*)&seq, sizeof(seq));
     payload.append((char*)&ttl, sizeof(ttl));
     payload.append((char*)&ts, sizeof(ts));
@@ -122,8 +122,8 @@ struct message : detail::copyable {
     }
     msg.src = *(decltype(src)*)p;
     p += sizeof(src);
-    msg.dest = *(decltype(dest)*)p;
-    p += sizeof(dest);
+    msg.dst = *(decltype(dst)*)p;
+    p += sizeof(dst);
     msg.seq = *(decltype(seq)*)p;
     p += sizeof(seq);
     msg.ttl = *(decltype(ttl)*)p;

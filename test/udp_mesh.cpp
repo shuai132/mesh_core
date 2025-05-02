@@ -127,12 +127,12 @@ int main() {
 
       /// test send message
       else {
-        addr_t dest = input;
+        addr_t dst = input;
         std::cout << "message: ";
         std::cin >> message;
-        printf("send to addr: 0x%02X, message: %s\n", dest, message.c_str());
+        printf("send to addr: 0x%02X, message: %s\n", dst, message.c_str());
         asio::post(s_io_context, [=, &mesh] {
-          mesh.send(dest, message);
+          mesh.send(dst, message);
         });
       }
     }

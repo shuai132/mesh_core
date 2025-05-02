@@ -62,7 +62,7 @@ class mesh : detail::noncopyable {
     }
     message m;
     m.src = addr_;
-    m.dest = addr;
+    m.dst = addr;
     m.seq = seq_++;
     m.ttl = TTL_DEFAULT;
     m.ts = impl_->get_timestamp_ms();
@@ -87,7 +87,7 @@ class mesh : detail::noncopyable {
     ts_ = impl_->get_timestamp_ms();
     message m;
     m.src = addr_;
-    m.dest = MESH_CORE_ADDR_BROADCAST;
+    m.dst = MESH_CORE_ADDR_BROADCAST;
     m.seq = seq_++;
     m.ttl = TTL_DEFAULT;
     m.ts = ts_;
@@ -135,8 +135,8 @@ class mesh : detail::noncopyable {
   }
 
   void dispatch(message message) {
-    MESH_CORE_LOGD("=>: self: 0x%02X, src: 0x%02X, dest: 0x%02X, seq: %u, ttl: %u, ts: 0x%04X, data: %s", addr_, message.src, message.dest,
-                   message.seq, message.ttl, message.ts, message.data.c_str());
+    MESH_CORE_LOGD("=>: self: 0x%02X, src: 0x%02X, dst: 0x%02X, seq: %u, ttl: %u, ts: 0x%04X, data: %s", addr_, message.src, message.dst, message.seq,
+                   message.ttl, message.ts, message.data.c_str());
     /// self check
     if (message.src == this->addr_) {
       MESH_CORE_LOGD("drop: self message");
@@ -159,12 +159,12 @@ class mesh : detail::noncopyable {
 
     /// special message check
     bool need_rebroadcast = true;
-    if (message.dest == this->addr_) {
+    if (message.dst == this->addr_) {
       need_rebroadcast = false;
       if (recv_handle_) recv_handle_(message.src, std::move(message.data));
-    } else if (message.dest == MESH_CORE_ADDR_BROADCAST) {
+    } else if (message.dst == MESH_CORE_ADDR_BROADCAST) {
       if (recv_handle_) recv_handle_(message.src, message.data);  // do not move data
-    } else if (message.dest == MESH_CORE_ADDR_SYNC_TIME) {
+    } else if (message.dst == MESH_CORE_ADDR_SYNC_TIME) {
       MESH_CORE_LOGD("sync ts: ttl=0, src: 0x%02X, seq: %u", message.src, message.seq);
       ts_ = message.ts;
       if (time_sync_handle_) time_sync_handle_(ts_);
