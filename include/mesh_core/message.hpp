@@ -21,25 +21,34 @@ namespace mesh_core {
 /// │ 1       │ ver          │ 0x00              │ Protocol version              │
 /// │ 1       │ len          │ 0x00              │ Payload length in bytes       │
 /// ├─────────┼──────────────┼───────────────────┼───────────────────────────────┤
+/// │ 1/2     │ type         │ 0x0               │ Message type                  │
+/// │ 1/2     │ ttl          │ 0x0               │ Hops                          │
+/// ├─────────┼──────────────┼───────────────────┼───────────────────────────────┤
 /// │ 1       │ src          │ 0x00              │ Source address                │
 /// │ 1       │ dst          │ 0x00              │ Destination address           │
 /// │ 1       │ seq          │ 0x00              │ Sequence number               │
-/// │ 1       │ ttl          │ 0x00              │ Time To Live (hops)           │
-/// │ 2       │ ts           │ 0x0000            │ Timestamp (16-bit)            │
+/// │ 2       │ ts           │ 0x0000            │ Timestamp for milliseconds    │
 /// ├─────────┼──────────────┼───────────────────┼───────────────────────────────┤
-/// │ n       │ data         │ [variable]        │ Payload data (len bytes)      │
+/// │ n       │ data         │ [variable]        │ Payload for user data         │
 /// │ 2       │ crc          │ 0x0000            │ CRC-16 of all preceding fields│
 /// └─────────┴──────────────┴───────────────────┴───────────────────────────────┘
 /// 11 bytes without data
+enum class message_type : uint8_t {
+  route_info,
+  user_data,
+  broadcast,
+  sync_time,
+};
 struct message : detail::copyable {
   // header
   uint8_t head = MESH_CORE_MSG_MAGIC;  // Mesh Core
   uint8_t ver = MESH_CORE_PROTO_VER;
   uint8_t len{};
+  message_type type{};
+  ttl_t ttl{};
   addr_t src{};
   addr_t dst{};
   seq_t seq{};
-  ttl_t ttl{};
   timestamp_t ts{};
   // data
   data_t data;
@@ -78,10 +87,12 @@ struct message : detail::copyable {
     payload.append((char*)&head, sizeof(head));
     payload.append((char*)&ver, sizeof(ver));
     payload.append((char*)&len, sizeof(len));
+    uint8_t type_ttl = ((uint8_t)type << 4) | ttl;
+    payload.append((char*)&type_ttl, sizeof(type_ttl));
+    payload.append((char*)&ttl, sizeof(ttl));
     payload.append((char*)&src, sizeof(src));
     payload.append((char*)&dst, sizeof(dst));
     payload.append((char*)&seq, sizeof(seq));
-    payload.append((char*)&ttl, sizeof(ttl));
     payload.append((char*)&ts, sizeof(ts));
     payload.append(data);
     crc = utils::crc16(payload.data(), payload.size());
@@ -120,14 +131,16 @@ struct message : detail::copyable {
       ok = false;
       return msg;
     }
+    uint8_t type_ttl = *(uint8_t*)p;
+    msg.type = static_cast<message_type>(type_ttl >> 4);
+    msg.ttl = type_ttl & 0x0F;
+    p += sizeof(type_ttl);
     msg.src = *(decltype(src)*)p;
     p += sizeof(src);
     msg.dst = *(decltype(dst)*)p;
     p += sizeof(dst);
     msg.seq = *(decltype(seq)*)p;
     p += sizeof(seq);
-    msg.ttl = *(decltype(ttl)*)p;
-    p += sizeof(ttl);
     msg.ts = *(decltype(ts)*)p;
     p += sizeof(ts);
 

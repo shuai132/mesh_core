@@ -23,13 +23,15 @@ with optimizations**  can actually create a more robust mesh system.
 /// │ 1       │ ver          │ 0x00              │ Protocol version              │
 /// │ 1       │ len          │ 0x00              │ Payload length in bytes       │
 /// ├─────────┼──────────────┼───────────────────┼───────────────────────────────┤
+/// │ 1/2     │ type         │ 0x0               │ Message type                  │
+/// │ 1/2     │ ttl          │ 0x0               │ Hops                          │
+/// ├─────────┼──────────────┼───────────────────┼───────────────────────────────┤
 /// │ 1       │ src          │ 0x00              │ Source address                │
 /// │ 1       │ dst          │ 0x00              │ Destination address           │
 /// │ 1       │ seq          │ 0x00              │ Sequence number               │
-/// │ 1       │ ttl          │ 0x00              │ Time To Live (hops)           │
-/// │ 2       │ ts           │ 0x0000            │ Timestamp (16-bit)            │
+/// │ 2       │ ts           │ 0x0000            │ Timestamp for milliseconds    │
 /// ├─────────┼──────────────┼───────────────────┼───────────────────────────────┤
-/// │ n       │ data         │ [variable]        │ Payload data (len bytes)      │
+/// │ n       │ data         │ [variable]        │ Payload for user data         │
 /// │ 2       │ crc          │ 0x0000            │ CRC-16 of all preceding fields│
 /// └─────────┴──────────────┴───────────────────┴───────────────────────────────┘
 /// 11 bytes without data
