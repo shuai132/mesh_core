@@ -29,12 +29,15 @@ with optimizations**  can actually create a more robust mesh system.
 /// │ 1       │ src          │ 0x00              │ Source address                │
 /// │ 1       │ dst          │ 0x00              │ Destination address           │
 /// │ 1       │ seq          │ 0x00              │ Sequence number               │
-/// │ 2       │ ts           │ 0x0000            │ Timestamp for milliseconds    │
+/// │ 4       │ ts           │ 0x00000000        │ Timestamp for milliseconds    │
 /// ├─────────┼──────────────┼───────────────────┼───────────────────────────────┤
+/// │ n       │ route_infos  │ [variable]        │ Route info list               │
+/// │---------│--------------│-------------------│-------------------------------│
+/// │ 1       │ next_hop     │ 0x00              │ Next hop                      │
 /// │ n       │ data         │ [variable]        │ Payload for user data         │
+/// ├─────────┼──────────────┼───────────────────┼───────────────────────────────┤
 /// │ 2       │ crc          │ 0x0000            │ CRC-16 of all preceding fields│
 /// └─────────┴──────────────┴───────────────────┴───────────────────────────────┘
-/// 11 bytes without data
 ```
 
 ## Usage
@@ -79,7 +82,7 @@ struct Impl {
    * @param handle call it after `ms`
    * @param ms milliseconds
    */
-  static void run_delay(std::function<void()> handle, int ms) {
+  static void run_delay(std::function<void()> handle, uint32_t ms) {
     (void)(handle);
     (void)(ms);
   }

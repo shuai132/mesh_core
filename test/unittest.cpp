@@ -9,27 +9,27 @@
 static asio::io_context s_io_context;
 
 struct Impl {
-  std::vector<std::function<void(std::string)>> recv_handles;
+  std::vector<std::function<void(std::string, mesh_core::snr_t)>> recv_handles;
 
   void broadcast(const std::string& data) {
     for (const auto& item : recv_handles) {
       asio::post(s_io_context, [&item, data] {
-        item(data);
+        item(data, 0);
       });
     }
   }
 
-  void set_recv_handle(std::function<void(std::string)> handle) {
+  void set_recv_handle(std::function<void(std::string, mesh_core::snr_t)> handle) {
     recv_handles.push_back(std::move(handle));
   }
 
   static mesh_core::timestamp_t get_timestamp_ms() {
     auto now = std::chrono::system_clock::now();
     auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
-    return static_cast<uint16_t>(ms & 0xFFFF);
+    return static_cast<mesh_core::timestamp_t>(ms & 0xFFFFFFFF);
   }
 
-  static void run_delay(std::function<void()> handle, int ms) {
+  static void run_delay(std::function<void()> handle, uint32_t ms) {
     auto timer = std::make_shared<asio::steady_timer>(s_io_context);
     timer->expires_after(std::chrono::milliseconds(ms));
     timer->async_wait([handle, timer](const asio::error_code&) mutable {

@@ -2,22 +2,6 @@
 
 #include "version.hpp"
 
-#ifndef MESH_CORE_ADDR_RESERVED_BEGIN
-#define MESH_CORE_ADDR_RESERVED_BEGIN 0xF0
-#endif
-
-#ifndef MESH_CORE_ADDR_BROADCAST
-#define MESH_CORE_ADDR_BROADCAST 0xFF
-#endif
-
-#ifndef MESH_CORE_ADDR_ROUTER
-#define MESH_CORE_ADDR_ROUTER 0xFE
-#endif
-
-#ifndef MESH_CORE_ADDR_SYNC_TIME
-#define MESH_CORE_ADDR_SYNC_TIME 0xFD
-#endif
-
 #ifndef MESH_CORE_DELAY_MS_MIN
 #define MESH_CORE_DELAY_MS_MIN 100
 #endif
@@ -32,4 +16,8 @@
 
 #ifndef MESH_CORE_LRU_RECORD_SIZE
 #define MESH_CORE_LRU_RECORD_SIZE 32
+#endif
+
+#ifndef MESH_CORE_ROUTE_EXPIRED_MS
+#define MESH_CORE_ROUTE_EXPIRED_MS (60 * 1000)
 #endif

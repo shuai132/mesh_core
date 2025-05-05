@@ -17,8 +17,9 @@ using addr_t = uint8_t;
 using seq_t = uint8_t;
 using ttl_t = uint8_t;
 using data_t = std::string;
-using timestamp_t = uint16_t;
+using timestamp_t = uint32_t;
 using msg_uuid_t = uint32_t;
+using snr_t = int8_t;
 
 /// assert
 static_assert(std::is_trivial<addr_t>::value, "");

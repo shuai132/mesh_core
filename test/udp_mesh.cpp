@@ -11,23 +11,23 @@ const asio::ip::udp::endpoint broadcast_endpoint(asio::ip::address_v4::broadcast
 static void udp_broadcast(std::string data);
 
 struct Impl {
-  std::function<void(std::string)> recv_handle;
+  std::function<void(std::string, mesh_core::snr_t)> recv_handle;
 
   static void broadcast(std::string data) {
     udp_broadcast(std::move(data));
   }
 
-  void set_recv_handle(std::function<void(std::string)> handle) {
+  void set_recv_handle(std::function<void(std::string, mesh_core::snr_t)> handle) {
     recv_handle = std::move(handle);
   }
 
   static mesh_core::timestamp_t get_timestamp_ms() {
     auto now = std::chrono::system_clock::now();
     auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
-    return static_cast<uint16_t>(ms & 0xFFFF);
+    return static_cast<mesh_core::timestamp_t>(ms & 0xFFFFFFFF);
   }
 
-  static void run_delay(std::function<void()> handle, int ms) {
+  static void run_delay(std::function<void()> handle, uint32_t ms) {
     auto timer = std::make_shared<asio::steady_timer>(s_io_context);
     timer->expires_after(std::chrono::milliseconds(ms));
     timer->async_wait([handle = std::move(handle), timer](const asio::error_code&) mutable {
@@ -64,7 +64,7 @@ static void start_recv(Impl& impl) {
       std::string message = std::string(recv_buffer.data(), bytes_received);
       MESH_CORE_LOGD("UPD recv size: %zu", message.size());
       print_hex(message.data(), message.size());
-      impl.recv_handle(message);
+      impl.recv_handle(message, 0);
       start_recv(impl);
     } else {
       MESH_CORE_LOGE("UPD error: %s", ec.message().c_str());
@@ -89,12 +89,12 @@ int main() {
   using namespace mesh_core;
   Impl impl;
   mesh<Impl> mesh(&impl);
-  mesh.set_addr(addr);
+  mesh.init(addr);
   mesh.on_recv([](addr_t addr, const data_t& data) {
     MESH_CORE_LOG("addr: 0x%02X, data: %s", addr, data.c_str());
   });
   mesh.on_sync_time([](timestamp_t ts) {
-    MESH_CORE_LOG("on_sync_time: 0x%04X", ts);
+    MESH_CORE_LOG("on_sync_time: 0x%08X", ts);
   });
 
   init_udp_impl(impl);
@@ -110,7 +110,7 @@ int main() {
       if (input == -1) {
         asio::post(s_io_context, [&mesh] {
           mesh.sync_time();
-          MESH_CORE_LOG("time: 0x%04X", mesh.get_timestamp());
+          MESH_CORE_LOG("time: 0x%08X", mesh.get_timestamp());
         });
         continue;
       }
@@ -119,9 +119,9 @@ int main() {
       else if (input == -2) {
         std::cout << "message: ";
         std::cin >> message;
-        printf("send broadcast: 0x%02X, message: %s\n", MESH_CORE_ADDR_BROADCAST, message.c_str());
+        printf("send broadcast: %s\n", message.c_str());
         asio::post(s_io_context, [=, &mesh] {
-          mesh.send(MESH_CORE_ADDR_BROADCAST, message);
+          mesh.broadcast(message);
         });
       }
 

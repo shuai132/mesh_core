@@ -27,18 +27,23 @@ namespace mesh_core {
 /// │ 1       │ src          │ 0x00              │ Source address                │
 /// │ 1       │ dst          │ 0x00              │ Destination address           │
 /// │ 1       │ seq          │ 0x00              │ Sequence number               │
-/// │ 2       │ ts           │ 0x0000            │ Timestamp for milliseconds    │
+/// │ 4       │ ts           │ 0x00000000        │ Timestamp for milliseconds    │
 /// ├─────────┼──────────────┼───────────────────┼───────────────────────────────┤
+/// │ n       │ route_infos  │ [variable]        │ Route info list               │
+/// │---------│--------------│-------------------│-------------------------------│
+/// │ 1       │ next_hop     │ 0x00              │ Next hop                      │
 /// │ n       │ data         │ [variable]        │ Payload for user data         │
+/// ├─────────┼──────────────┼───────────────────┼───────────────────────────────┤
 /// │ 2       │ crc          │ 0x0000            │ CRC-16 of all preceding fields│
 /// └─────────┴──────────────┴───────────────────┴───────────────────────────────┘
-/// 11 bytes without data
+
 enum class message_type : uint8_t {
   route_info,
   user_data,
   broadcast,
   sync_time,
 };
+
 struct message : detail::copyable {
   // header
   uint8_t head = MESH_CORE_MSG_MAGIC;  // Mesh Core
@@ -50,14 +55,16 @@ struct message : detail::copyable {
   addr_t dst{};
   seq_t seq{};
   timestamp_t ts{};
-  // data
-  data_t data;
+
+  addr_t next_hop{};  // only for userdata
+  data_t data;        // userdata or route_infos
+
   uint16_t crc{};
 
  public:
   // clang-format off
-  // message min size(without data): 11 bytes
-  static const uint8_t SizeMin = sizeof(head) + sizeof(ver) + sizeof(len) + sizeof(src) + sizeof(dst) + sizeof(seq) + sizeof(ttl) + sizeof(ts) + sizeof(crc);
+  // message min size(without data): 13 bytes
+  static const uint8_t SizeMin = sizeof(head) + sizeof(ver) + sizeof(len) + sizeof(ttl) + sizeof(src) + sizeof(dst)+ sizeof(seq) + sizeof(ts) + sizeof(crc);
   // clang-format on
   static const uint8_t SizeNotInLen = sizeof(head) + sizeof(ver) + sizeof(len);
   // message data max size: 251 bytes
@@ -68,13 +75,16 @@ struct message : detail::copyable {
   msg_uuid_t cal_uuid() const {
     static_assert(std::is_same<msg_uuid_t, uint32_t>::value, "");
     static_assert(std::is_same<ttl_t, uint8_t>::value, "");
-    static_assert(std::is_same<timestamp_t, uint16_t>::value, "");
+    static_assert(std::is_same<timestamp_t, uint32_t>::value, "");
     // uuid: {src|seq|ts}
-    return (src << 24) | (seq << 16) | (ts);
+    return (src << 24) | (seq << 16) | (uint16_t(ts & 0x0000FFFF));
   }
 
   void finalize() {
     len = SizeMin + data.size() - SizeNotInLen;
+    if (type == message_type::user_data) {
+      ++len;
+    }
   }
 
   std::string serialize(bool& ok) {
@@ -89,11 +99,13 @@ struct message : detail::copyable {
     payload.append((char*)&len, sizeof(len));
     uint8_t type_ttl = ((uint8_t)type << 4) | ttl;
     payload.append((char*)&type_ttl, sizeof(type_ttl));
-    payload.append((char*)&ttl, sizeof(ttl));
     payload.append((char*)&src, sizeof(src));
     payload.append((char*)&dst, sizeof(dst));
     payload.append((char*)&seq, sizeof(seq));
     payload.append((char*)&ts, sizeof(ts));
+    if (type == message_type::user_data) {
+      payload.append((char*)&next_hop, sizeof(next_hop));
+    }
     payload.append(data);
     crc = utils::crc16(payload.data(), payload.size());
     payload.append((char*)&crc, sizeof(crc));
@@ -143,6 +155,10 @@ struct message : detail::copyable {
     p += sizeof(seq);
     msg.ts = *(decltype(ts)*)p;
     p += sizeof(ts);
+    if (msg.type == message_type::user_data) {
+      msg.next_hop = *(decltype(next_hop)*)p;
+      p += sizeof(next_hop);
+    }
 
     // crc
     msg.crc = *(uint16_t*)(pend - sizeof(crc));

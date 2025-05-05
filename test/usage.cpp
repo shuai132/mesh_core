@@ -5,20 +5,20 @@
  *
  * NOTE:
  * 1. broadcast and recv_handle should ensure packet is complete
- * 2. all methods can be static
+ * 2. all methods can be static or non-static
  */
 struct Impl {
   /**
    * @param data binary data to broadcast
    */
-  void broadcast(std::string data) {
+  static void broadcast(std::string data) {
     (void)(data);
   }
 
   /**
    * @param handle store it, call it on receive broadcast.
    */
-  void set_recv_handle(std::function<void(std::string)> handle) {
+  static void set_recv_handle(std::function<void(std::string, mesh_core::snr_t)> handle) {
     (void)(handle);
   }
 
@@ -33,7 +33,7 @@ struct Impl {
    * @param handle call it after `ms`
    * @param ms milliseconds
    */
-  static void run_delay(std::function<void()> handle, int ms) {
+  static void run_delay(std::function<void()> handle, uint32_t ms) {
     (void)(handle);
     (void)(ms);
   }
