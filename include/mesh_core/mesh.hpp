@@ -112,6 +112,14 @@ class mesh : detail::noncopyable {
     broadcast_interceptor_ = std::move(interceptor);
   }
 
+  void dump_debug() {
+    MESH_CORE_LOGD("route table: size: %u", (uint32_t)route_table_.get_table().size());
+    for (const auto& item : route_table_.get_table()) {
+      MESH_CORE_LOGD("dst: 0x%02X, next_hop: 0x%02X, learn_from: 0x%02X, metric: %d, snr: %d, expired: 0x%08X", item.dst, item.next_hop,
+                     item.learn_from, item.metric, item.snr, item.expired);
+    }
+  }
+
  private:
   void init() {
     impl_->set_recv_handle([this](const std::string& payload, snr_t snr) {
@@ -127,18 +135,18 @@ class mesh : detail::noncopyable {
     route_info info;
     info.dst = addr_;
     info.metric = 0;
+    info.learn_from = addr_;
     route_table_.add(info);
 
     run_interval(
         [this] {
           sync_route();
         },
-        3 * 1000);
+        MESH_CORE_ROUTE_INTERVAL_MS);
 
     run_interval(
         [this] {
           route_table_.check_expired(get_timestamp());
-          route_table_.debug_print();
         },
         1 * 1000);
   }
@@ -182,7 +190,7 @@ class mesh : detail::noncopyable {
     route_msg rm;
     for (const auto& item : route_table_.get_table()) {
       rm.dst = item.dst;
-      rm.next_hop = item.next_hop;
+      rm.next_hop = addr_;
       rm.metric = item.metric;
       m.data.append((char*)&rm, sizeof(rm));
     }
@@ -196,6 +204,9 @@ class mesh : detail::noncopyable {
     switch (message.type) {
       case message_type::route_info: {
         dispatch_route_info(message, snr);
+#ifdef MESH_CORE_LOG_SHOW_DEBUG
+        dump_debug();
+#endif
         return;
       } break;
       case message_type::user_data: {
@@ -212,26 +223,40 @@ class mesh : detail::noncopyable {
 
   void dispatch_route_info(const message& message, snr_t snr) {
     auto route_msg_ptr = (route_msg*)(message.data.data());
-    auto route_msg_num = message.data.size() / sizeof(route_msg);
+    uint32_t route_msg_num = message.data.size() / sizeof(route_msg);
+    MESH_CORE_LOGD("update route info: size: %u", route_msg_num);
     for (int i = 0; i < route_msg_num; ++i) {
       auto route_msg = route_msg_ptr + i;
+      MESH_CORE_LOGD("dst: 0x%02X, next_hop: 0x%02X, metric: %d", route_msg->dst, route_msg->next_hop, route_msg->metric);
+      if (route_msg->next_hop == this->addr_) {
+        MESH_CORE_LOGD("ignore next_hop is self");
+        continue;
+      }
+      if (route_msg->learn_from == this->addr_) {
+        MESH_CORE_LOGD("ignore learn from self");
+        continue;
+      }
+      if (route_msg->metric >= MESH_CORE_TTL_DEFAULT) {
+        MESH_CORE_LOGD("ignore metric max");
+        continue;
+      }
       auto info_old = route_table_.find_node(route_msg->dst);
-      route_info info_new{};
+      route_info info_new;
       info_new.dst = route_msg->dst;
       info_new.next_hop = route_msg->next_hop;
       info_new.metric = route_msg->metric + 1;
+      info_new.learn_from = message.src;
       info_new.snr = snr;
       info_new.expired = get_timestamp();
       if (info_old == nullptr) {
         route_table_.add(info_new);
       } else {
-        // check metric
-        if (info_new.metric < info_old->metric) {
+        if ((info_new.metric < info_old->metric) || (info_new.metric == info_old->metric && info_new.snr > info_old->snr)) {
           *info_old = info_new;
-        }
-        // check snr
-        else if (info_new.metric == info_old->metric && info_new.snr > info_old->snr) {
-          *info_old = info_new;
+        } else if (info_new.metric == info_old->metric) {
+          info_old->expired = get_timestamp();
+        } else {
+          MESH_CORE_LOGD("ignore");
         }
       }
     }

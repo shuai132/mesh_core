@@ -125,6 +125,14 @@ int main() {
         });
       }
 
+      /// test dump_debug
+      else if (input == -3) {
+        printf("dump_debug: \n");
+        asio::post(s_io_context, [=, &mesh] {
+          mesh.dump_debug();
+        });
+      }
+
       /// test send message
       else {
         addr_t dst = input;

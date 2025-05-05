@@ -15,6 +15,7 @@ struct route_msg : detail::copyable {
   addr_t dst{};
   addr_t next_hop{};
   uint8_t metric{};
+  addr_t learn_from{};
 };
 #pragma pack()
 
@@ -22,6 +23,7 @@ struct route_info : detail::copyable {
   addr_t dst{};
   addr_t next_hop{};
   uint8_t metric{};
+  addr_t learn_from{};
 
   snr_t snr{};
   timestamp_t expired{};
@@ -55,18 +57,15 @@ class route_table : detail::noncopyable {
         return false;
       }
       if (ts - info.expired > MESH_CORE_ROUTE_EXPIRED_MS) {
+        MESH_CORE_LOGD("route expired: 0x%02X", info.dst);
+        return true;
+      }
+      if (info.metric >= MESH_CORE_TTL_DEFAULT) {
+        MESH_CORE_LOGD("metric expired");
         return true;
       }
       return false;
     });
-  }
-
-  void debug_print() {
-    MESH_CORE_LOG("route table: size: %u", (uint32_t)table_.size());
-    for (const auto& item : table_) {
-      MESH_CORE_LOG("item: dst: 0x%02X, next_hop: 0x%02X, metric: %d, snr: %d, expired: 0x%08X", item.dst, item.next_hop, item.metric, item.snr,
-                    item.expired);
-    }
   }
 
  private:
