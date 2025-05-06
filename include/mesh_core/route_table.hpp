@@ -23,7 +23,6 @@ struct route_info : detail::copyable {
   addr_t dst{};
   addr_t next_hop{};
   uint8_t metric{};
-  addr_t learn_from{};
 
   snr_t snr{};
   timestamp_t expired{};

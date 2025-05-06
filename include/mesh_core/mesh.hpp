@@ -15,11 +15,13 @@
 
 // std
 #include <functional>
+#include <memory>
 #include <string>
 
 namespace mesh_core {
 
 using broadcast_interceptor_t = std::function<bool(message&)>;
+using dispatch_interceptor_t = std::function<bool(message&)>;
 
 template <typename Impl>
 class mesh : detail::noncopyable {
@@ -106,17 +108,24 @@ class mesh : detail::noncopyable {
   }
 
   /**
-   * @param interceptor return bool for should_continue
+   * @param interceptor return true for continue
    */
   void set_broadcast_interceptor(broadcast_interceptor_t interceptor) {
     broadcast_interceptor_ = std::move(interceptor);
   }
 
+  /**
+   * @param interceptor return true for continue
+   */
+  void set_dispatch_interceptor(dispatch_interceptor_t interceptor) {
+    dispatch_interceptor_ = std::move(interceptor);
+  }
+
   void dump_debug() {
     MESH_CORE_LOGD("route table: size: %u", (uint32_t)route_table_.get_table().size());
     for (const auto& item : route_table_.get_table()) {
-      MESH_CORE_LOGD("dst: 0x%02X, next_hop: 0x%02X, learn_from: 0x%02X, metric: %d, snr: %d, expired: 0x%08X", item.dst, item.next_hop,
-                     item.learn_from, item.metric, item.snr, item.expired);
+      MESH_CORE_LOGD("dst: 0x%02X, next_hop: 0x%02X, metric: %d, snr: %d, expired: 0x%08X", item.dst, item.next_hop, item.metric, item.snr,
+                     item.expired);
     }
   }
 
@@ -135,7 +144,6 @@ class mesh : detail::noncopyable {
     route_info info;
     info.dst = addr_;
     info.metric = 0;
-    info.learn_from = addr_;
     route_table_.add(info);
 
     run_interval(
@@ -198,24 +206,37 @@ class mesh : detail::noncopyable {
     broadcast(std::move(m));
   }
 
-  void dispatch(message message, snr_t snr) {
-    MESH_CORE_LOGD("=>: self: 0x%02X, type: %d, src: 0x%02X, dst: 0x%02X, seq: %u, ttl: %u, ts: 0x%08X, snr: %d, data: %s", addr_, (int)message.type,
-                   message.src, message.dst, message.seq, message.ttl, message.ts, snr, message.data.c_str());
-    switch (message.type) {
+  void dispatch(message msg, snr_t snr) {
+    // clang-format off
+    MESH_CORE_LOGD("=>: self: 0x%02X, type: %d, src: 0x%02X, dst: 0x%02X, seq: %u, ttl: %u, ts: 0x%08X, snr: %d, data: %s",
+                   addr_, (int)msg.type, msg.src, msg.dst, msg.seq, msg.ttl, msg.ts, snr, msg.data.c_str());
+    // clang-format on
+
+    /// interceptor
+    if (dispatch_interceptor_) {
+      bool should_continue = dispatch_interceptor_(msg);
+      if (!should_continue) {
+        MESH_CORE_LOGD("dispatch: interceptor abort");
+        return;
+      }
+    }
+
+    /// dispatch
+    switch (msg.type) {
       case message_type::route_info: {
-        dispatch_route_info(message, snr);
+        dispatch_route_info(msg, snr);
 #ifdef MESH_CORE_LOG_SHOW_DEBUG
         dump_debug();
 #endif
         return;
       } break;
       case message_type::user_data: {
-        dispatch_userdata(std::move(message));
+        dispatch_userdata(std::move(msg));
         return;
       } break;
       case message_type::broadcast:
       case message_type::sync_time: {
-        dispatch_any_broadcast(std::move(message));
+        dispatch_any_broadcast(std::move(msg));
         return;
       } break;
     }
@@ -245,7 +266,6 @@ class mesh : detail::noncopyable {
       info_new.dst = route_msg->dst;
       info_new.next_hop = route_msg->next_hop;
       info_new.metric = route_msg->metric + 1;
-      info_new.learn_from = message.src;
       info_new.snr = snr;
       info_new.expired = get_timestamp();
       if (info_old == nullptr) {
@@ -342,6 +362,7 @@ class mesh : detail::noncopyable {
   recv_handle_t recv_handle_;
   time_sync_handle_t time_sync_handle_;
   broadcast_interceptor_t broadcast_interceptor_;
+  dispatch_interceptor_t dispatch_interceptor_;
   addr_t addr_{};
   bool route_only_{};
   seq_t seq_{};

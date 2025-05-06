@@ -42,7 +42,7 @@ struct Impl {
 int main() {
   Impl impl;
   mesh_core::mesh<Impl> mesh(&impl);
-  mesh.set_addr(0x00);
+  mesh.init(0x00);
   mesh.on_recv([](mesh_core::addr_t addr, const mesh_core::data_t& data) {
     MESH_CORE_LOG("addr: 0x%02X, data: %s", addr, data.c_str());
   });

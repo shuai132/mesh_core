@@ -84,7 +84,7 @@ int main() {
   std::vector<std::unique_ptr<mesh<Impl>>> mesh_list;
   for (int i = 0; i < 10; ++i) {
     auto m = std::make_unique<mesh<Impl>>(&impl);
-    m->set_addr(i);
+    m->init(i);
     m->on_recv([i](addr_t addr, const data_t& data) {
       MESH_CORE_LOG("id: %d: recv from addr: 0x%02X, data: %s", i, addr, data.c_str());
     });

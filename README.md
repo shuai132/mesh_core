@@ -2,16 +2,15 @@
 
 [![Build Status](https://github.com/shuai132/mesh_core/workflows/CI/badge.svg)](https://github.com/shuai132/mesh_core/actions?workflow=CI)
 
-A lightweight mesh solution, works best for small networks.
-
-Sophisticated routing protocols can be overly complex and error-prone. For networks with limited nodes, using **flooding
-with optimizations**  can actually create a more robust mesh system.
+A lightweight mesh library, based on distance-vector routing algorithm.
 
 ## Features
 
 * Header-Only
-* No route-table
-* Easy to use, understand, and debug.
+* Flooding based broadcast
+* Distance vector routing algorithm
+* Easy to use, understand, and debug
+* Support most microchips, e.g. STM32, ESP32...
 
 ## Protocol
 

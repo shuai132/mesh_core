@@ -1,6 +1,6 @@
 {
   "name": "mesh_core",
-  "description": "a lightweight mesh solution, works best for small networks.",
+  "description": "A lightweight mesh library, based on distance-vector routing algorithm.",
   "keywords": "mesh,lora",
   "authors": {
     "name": "shuai132",

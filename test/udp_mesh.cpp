@@ -48,7 +48,6 @@ static void print_hex(const void* data, size_t size) {
 static void udp_broadcast(std::string data) {
   MESH_CORE_LOGD("UPD send size: %zu", data.size());
   print_hex(data.data(), data.size());
-  s_socket.set_option(asio::socket_base::broadcast(true));
   s_socket.async_send_to(asio::buffer(data), broadcast_endpoint, [](const asio::error_code& ec, std::size_t) {
     if (ec) {
       MESH_CORE_LOGE("Send error: %s", ec.message().c_str());
@@ -95,6 +94,14 @@ int main() {
   });
   mesh.on_sync_time([](timestamp_t ts) {
     MESH_CORE_LOG("on_sync_time: 0x%08X", ts);
+  });
+
+  mesh.set_dispatch_interceptor([&mesh](message& msg) {
+    // ignore msg which addr diff >= 10
+    if (std::abs(msg.src - mesh.addr()) >= 10) {
+      return false;
+    }
+    return true;
   });
 
   init_udp_impl(impl);
