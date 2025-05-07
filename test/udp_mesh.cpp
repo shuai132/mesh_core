@@ -37,17 +37,9 @@ struct Impl {
   }
 };
 
-static void print_hex(const void* data, size_t size) {
-  const auto* bytes = (const unsigned char*)data;
-  for (size_t i = 0; i < size; ++i) {
-    L_O_G_PRINTF("%02X ", bytes[i]);
-  }
-  L_O_G_PRINTF("\n");
-}
-
 static void udp_broadcast(std::string data) {
   MESH_CORE_LOGD("UPD send size: %zu", data.size());
-  print_hex(data.data(), data.size());
+  MESH_CORE_LOGD_HEX(data.data(), data.size());
   s_socket.async_send_to(asio::buffer(data), broadcast_endpoint, [](const asio::error_code& ec, std::size_t) {
     if (ec) {
       MESH_CORE_LOGE("Send error: %s", ec.message().c_str());
@@ -62,7 +54,7 @@ static void start_recv(Impl& impl) {
     if (!ec) {
       std::string message = std::string(recv_buffer.data(), bytes_received);
       MESH_CORE_LOGD("UPD recv size: %zu", message.size());
-      print_hex(message.data(), message.size());
+      MESH_CORE_LOGD_HEX(message.data(), message.size());
       impl.recv_handle(message, 0);
       start_recv(impl);
     } else {

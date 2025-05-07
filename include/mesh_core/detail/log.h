@@ -2,6 +2,7 @@
 // L_O_G_NDEBUG                 disable debug log(auto by NDEBUG)
 // L_O_G_SHOW_DEBUG             force enable debug log
 // L_O_G_DISABLE_ALL            force disable all log
+// L_O_G_DISABLE_HEX            disable hex function
 // L_O_G_DISABLE_COLOR          disable color
 // L_O_G_LINE_END_CRLF
 // L_O_G_SHOW_FULL_PATH
@@ -36,16 +37,41 @@
 
 #define MESH_CORE_LOG_IN_LIB
 
+// version
+#define MESH_CORE_LOG_VER_MAJOR 1
+#define MESH_CORE_LOG_VER_MINOR 0
+#define MESH_CORE_LOG_VER_PATCH 1
+#define MESH_CORE_LOG_TO_VERSION(major, minor, patch) (major * 10000 + minor * 100 + patch)
+#define MESH_CORE_LOG_VERSION MESH_CORE_LOG_TO_VERSION(MESH_CORE_LOG_VER_MAJOR, MESH_CORE_LOG_VER_MINOR, MESH_CORE_LOG_VER_PATCH)
+
+#ifdef __cplusplus
+#define L_O_G_FUNCTION extern "C" inline
+#else
+#define L_O_G_FUNCTION static inline
+#endif
+
+// suppress compile warnings, ensure params will be used
+#ifndef L_O_G_VOID
+#define L_O_G_VOID L_O_G_VOID
+L_O_G_FUNCTION void L_O_G_VOID(const char *fmt, ...) {
+  (void)(fmt);
+}
+#endif
+
 #if defined(MESH_CORE_LOG_DISABLE_ALL) || defined(L_O_G_DISABLE_ALL)
 
-#define MESH_CORE_LOG(fmt, ...)           ((void)0)
-#define MESH_CORE_LOGT(tag, fmt, ...)     ((void)0)
-#define MESH_CORE_LOGI(fmt, ...)          ((void)0)
-#define MESH_CORE_LOGW(fmt, ...)          ((void)0)
-#define MESH_CORE_LOGE(fmt, ...)          ((void)0)
-#define MESH_CORE_LOGF(fmt, ...)          ((void)0)
-#define MESH_CORE_LOGD(fmt, ...)          ((void)0)
-#define MESH_CORE_LOGV(fmt, ...)          ((void)0)
+#define MESH_CORE_LOG(fmt, ...)           L_O_G_VOID(fmt, ##__VA_ARGS__)
+#define MESH_CORE_LOGT(tag, fmt, ...)     L_O_G_VOID(fmt, ##__VA_ARGS__)
+#define MESH_CORE_LOGI(fmt, ...)          L_O_G_VOID(fmt, ##__VA_ARGS__)
+#define MESH_CORE_LOGW(fmt, ...)          L_O_G_VOID(fmt, ##__VA_ARGS__)
+#define MESH_CORE_LOGE(fmt, ...)          L_O_G_VOID(fmt, ##__VA_ARGS__)
+#define MESH_CORE_LOGF(fmt, ...)          L_O_G_VOID(fmt, ##__VA_ARGS__)
+#define MESH_CORE_LOGD(fmt, ...)          L_O_G_VOID(fmt, ##__VA_ARGS__)
+#define MESH_CORE_LOGV(fmt, ...)          L_O_G_VOID(fmt, ##__VA_ARGS__)
+
+#define MESH_CORE_LOGR(fmt, ...)          L_O_G_VOID(fmt, ##__VA_ARGS__)
+#define MESH_CORE_LOGLN()                 ((void)0)
+#define MESH_CORE_LOGRLN(fmt, ...)        L_O_G_VOID(fmt, ##__VA_ARGS__)
 
 #else
 
@@ -53,6 +79,10 @@
 #include <cstring>
 #include <cstdlib>
 #if __cplusplus >= 201103L || defined(_MSC_VER)
+
+#if !defined(L_O_G_DISABLE_HEX) && !defined(L_O_G_ENABLE_HEX)
+#define L_O_G_ENABLE_HEX
+#endif
 
 #if !defined(L_O_G_DISABLE_THREAD_SAFE) && !defined(L_O_G_ENABLE_THREAD_SAFE)
 #define L_O_G_ENABLE_THREAD_SAFE
@@ -263,24 +293,143 @@ static inline std::string get_time() {
 #define MESH_CORE_LOGE(fmt, ...)          do{ L_O_G_PRINTF(MESH_CORE_LOG_COLOR_RED     MESH_CORE_LOG_TIME_LABEL MESH_CORE_LOG_THREAD_LABEL "[E]: %s:%d [%s] "  fmt MESH_CORE_LOG_END MESH_CORE_LOG_TIME_VALUE MESH_CORE_LOG_THREAD_VALUE, MESH_CORE_LOG_BASE_FILENAME, __LINE__, __func__, ##__VA_ARGS__); } while(0)                     // NOLINT(bugprone-lambda-function-name)
 #define MESH_CORE_LOGF(fmt, ...)          do{ L_O_G_PRINTF(MESH_CORE_LOG_COLOR_CYAN    MESH_CORE_LOG_TIME_LABEL MESH_CORE_LOG_THREAD_LABEL "[!]: %s:%d [%s] "  fmt MESH_CORE_LOG_END MESH_CORE_LOG_TIME_VALUE MESH_CORE_LOG_THREAD_VALUE, MESH_CORE_LOG_BASE_FILENAME, __LINE__, __func__, ##__VA_ARGS__); MESH_CORE_LOG_EXIT_PROGRAM(); } while(0) // NOLINT(bugprone-lambda-function-name)
 
-#if defined(MESH_CORE_LOG_IN_LIB) && !defined(MESH_CORE_LOG_SHOW_DEBUG) && !defined(L_O_G_NDEBUG)
-#define MESH_CORE_LOG_NDEBUG
+// for raw print
+#define MESH_CORE_LOGR(fmt, ...)          do{ L_O_G_PRINTF(fmt, ##__VA_ARGS__);         } while(0)
+#define MESH_CORE_LOGLN()                 MESH_CORE_LOGR(MESH_CORE_LOG_LINE_END)
+#define MESH_CORE_LOGRLN(fmt, ...)        do{ L_O_G_PRINTF(fmt MESH_CORE_LOG_END, ##__VA_ARGS__); } while(0)
+
+// for hex print
+#ifdef L_O_G_ENABLE_HEX
+#define MESH_CORE_LOG_HEX                 L_O_G_HEX
+#define MESH_CORE_LOG_HEX_H               L_O_G_HEX_H
+#define MESH_CORE_LOG_HEX_C               L_O_G_HEX_C
+#define MESH_CORE_LOG_HEX_D               L_O_G_HEX_D
+#include <stddef.h>
+#include <stdint.h>
+#include <ctype.h>
+#include <stdio.h>
+#ifdef ARDUINO
+#include <Arduino.h>
 #endif
 
-#if defined(L_O_G_NDEBUG) && !defined(MESH_CORE_LOG_NDEBUG)
+#ifndef L_O_G_HEX
+#define L_O_G_HEX L_O_G_HEX
+L_O_G_FUNCTION void L_O_G_HEX(const void *data, size_t size) {
+  const unsigned char *byte = (const unsigned char *)data;
+  uint32_t offset = 0;
+  while (offset < size) {
+    L_O_G_PRINTF("%08X  ", offset);
+    char hex_buffer[16 * 3 + 1] = {0};
+    char ascii_buffer[16 + 1] = {0};
+    for (int i = 0; i < 16; i++) {
+      if (offset + i < size) {
+        unsigned char b = byte[offset + i];
+        snprintf(hex_buffer + i * 3, 4, "%02X ", b);
+        ascii_buffer[i] = (char)(isprint(b) ? b : '.');
+      } else {
+        snprintf(hex_buffer + i * 3, 4, "   ");
+        ascii_buffer[i] = ' ';
+      }
+    }
+    L_O_G_PRINTF("%-48s %s" MESH_CORE_LOG_LINE_END, hex_buffer, ascii_buffer);
+    offset += 16;
+  }
+}
+#endif
+
+#ifndef L_O_G_HEX_H
+#define L_O_G_HEX_H L_O_G_HEX_H
+L_O_G_FUNCTION void L_O_G_HEX_H(const void *data, size_t size) {
+  const char *bytes = (const char *)data;
+  for (size_t i = 0; i < size; ++i) {
+    L_O_G_PRINTF("%02X ", bytes[i]);
+  }
+  L_O_G_PRINTF(MESH_CORE_LOG_LINE_END);
+}
+#endif
+
+#ifndef L_O_G_HEX_CHAR
+#define L_O_G_HEX_CHAR L_O_G_HEX_CHAR
+L_O_G_FUNCTION void L_O_G_HEX_CHAR(const char *fmt, const void *data, size_t size) {
+  const char *bytes = (const char *)data;
+  for (size_t i = 0; i < size; ++i) {
+    char c = bytes[i];
+    L_O_G_PRINTF(fmt, isprint(c) ? c : '.');
+  }
+  L_O_G_PRINTF(MESH_CORE_LOG_LINE_END);
+}
+#endif
+
+#define L_O_G_HEX_C(data, size) L_O_G_HEX_CHAR("%c", data, size);
+#define L_O_G_HEX_D(data, size) L_O_G_HEX_CHAR(" %c ", data, size);
+#endif
+
+// in-lib should define no-debug by default, if not enable by user
+#if defined(MESH_CORE_LOG_IN_LIB) && !defined(MESH_CORE_LOG_SHOW_DEBUG) && !defined(L_O_G_NDEBUG)
+#ifndef MESH_CORE_LOG_NDEBUG
 #define MESH_CORE_LOG_NDEBUG
+#endif
+#endif
+
+#if defined(L_O_G_NDEBUG)
+#ifndef MESH_CORE_LOG_NDEBUG
+#define MESH_CORE_LOG_NDEBUG
+#endif
 #endif
 
 #if (defined(NDEBUG) || defined(MESH_CORE_LOG_NDEBUG)) && !defined(L_O_G_SHOW_DEBUG)
-#define MESH_CORE_LOGD(fmt, ...)          ((void)0)
+#ifndef MESH_CORE_LOG_NDEBUG
+#define MESH_CORE_LOG_NDEBUG
+#endif
 #else
+#ifndef MESH_CORE_LOG_SHOW_DEBUG
+#define MESH_CORE_LOG_SHOW_DEBUG
+#endif
+#endif
+
+#if defined(MESH_CORE_LOG_SHOW_DEBUG)
 #define MESH_CORE_LOGD(fmt, ...)          do{ L_O_G_PRINTF(MESH_CORE_LOG_COLOR_DEFAULT MESH_CORE_LOG_TIME_LABEL MESH_CORE_LOG_THREAD_LABEL "[D]: %s:%d "       fmt MESH_CORE_LOG_END MESH_CORE_LOG_TIME_VALUE MESH_CORE_LOG_THREAD_VALUE, MESH_CORE_LOG_BASE_FILENAME, __LINE__, ##__VA_ARGS__); } while(0)
+#define MESH_CORE_LOGD_HEX                L_O_G_HEX
+#define MESH_CORE_LOGD_HEX_H              L_O_G_HEX_H
+#define MESH_CORE_LOGD_HEX_C              L_O_G_HEX_C
+#define MESH_CORE_LOGD_HEX_D              L_O_G_HEX_D
+#else
+#define MESH_CORE_LOGD(fmt, ...)          ((void)0)
+#define MESH_CORE_LOGD_HEX(...)           ((void)0)
+#define MESH_CORE_LOGD_HEX_H(...)         ((void)0)
+#define MESH_CORE_LOGD_HEX_C(...)         ((void)0)
+#define MESH_CORE_LOGD_HEX_D(...)         ((void)0)
 #endif
 
 #if defined(MESH_CORE_LOG_SHOW_VERBOSE)
 #define MESH_CORE_LOGV(fmt, ...)          do{ L_O_G_PRINTF(MESH_CORE_LOG_COLOR_DEFAULT MESH_CORE_LOG_TIME_LABEL MESH_CORE_LOG_THREAD_LABEL "[V]: %s:%d "       fmt MESH_CORE_LOG_END MESH_CORE_LOG_TIME_VALUE MESH_CORE_LOG_THREAD_VALUE, MESH_CORE_LOG_BASE_FILENAME, __LINE__, ##__VA_ARGS__); } while(0)
+#define MESH_CORE_LOGV_HEX                L_O_G_HEX
+#define MESH_CORE_LOGV_HEX_H              L_O_G_HEX_H
+#define MESH_CORE_LOGV_HEX_C              L_O_G_HEX_C
+#define MESH_CORE_LOGV_HEX_D              L_O_G_HEX_C
 #else
 #define MESH_CORE_LOGV(fmt, ...)          ((void)0)
+#define MESH_CORE_LOGV_HEX(...)           ((void)0)
+#define MESH_CORE_LOGV_HEX_H(...)         ((void)0)
+#define MESH_CORE_LOGV_HEX_C(...)         ((void)0)
+#define MESH_CORE_LOGV_HEX_D(...)         ((void)0)
+#endif
+
+/// logic check
+#if defined(L_O_G_SHOW_DEBUG) && !defined(MESH_CORE_LOG_SHOW_DEBUG)
+#error
+#endif
+
+#if defined(L_O_G_NDEBUG) && !defined(MESH_CORE_LOG_NDEBUG)
+#error
+#endif
+
+#if defined(L_O_G_DISABLE_ALL) && !defined(MESH_CORE_LOG_DISABLE_ALL)
+#error
+#endif
+
+#if !defined(MESH_CORE_LOG_NDEBUG) && !defined(MESH_CORE_LOG_SHOW_DEBUG)
+#error
 #endif
 
 #endif

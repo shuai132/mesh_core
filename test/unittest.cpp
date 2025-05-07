@@ -4,7 +4,6 @@
 #include "assert_def.h"
 #include "mesh_core.hpp"
 #include "mesh_core/utils.hpp"
-#include "utils.hpp"
 
 static asio::io_context s_io_context;
 
@@ -56,7 +55,8 @@ static void test_message() {
     m.finalize();
     bool ok;
     auto payload = m.serialize(ok);
-    print_hex("payload", payload.data(), payload.size());
+    MESH_CORE_LOG("payload:");
+    MESH_CORE_LOG_HEX(payload.data(), payload.size());
     ASSERT(ok);
     auto m2 = mesh_core::message::deserialize(payload, ok);
     ASSERT(ok);
