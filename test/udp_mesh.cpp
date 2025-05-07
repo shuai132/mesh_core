@@ -11,13 +11,13 @@ const asio::ip::udp::endpoint broadcast_endpoint(asio::ip::address_v4::broadcast
 static void udp_broadcast(std::string data);
 
 struct Impl {
-  std::function<void(std::string, mesh_core::snr_t)> recv_handle;
+  mesh_core::recv_handle_t recv_handle;
 
   static void broadcast(std::string data) {
     udp_broadcast(std::move(data));
   }
 
-  void set_recv_handle(std::function<void(std::string, mesh_core::snr_t)> handle) {
+  void set_recv_handle(mesh_core::recv_handle_t handle) {
     recv_handle = std::move(handle);
   }
 

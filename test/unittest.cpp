@@ -9,7 +9,7 @@
 static asio::io_context s_io_context;
 
 struct Impl {
-  std::vector<std::function<void(std::string, mesh_core::snr_t)>> recv_handles;
+  std::vector<mesh_core::recv_handle_t> recv_handles;
 
   void broadcast(const std::string& data) {
     for (const auto& item : recv_handles) {
@@ -19,7 +19,7 @@ struct Impl {
     }
   }
 
-  void set_recv_handle(std::function<void(std::string, mesh_core::snr_t)> handle) {
+  void set_recv_handle(mesh_core::recv_handle_t handle) {
     recv_handles.push_back(std::move(handle));
   }
 

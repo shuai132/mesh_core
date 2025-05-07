@@ -19,7 +19,7 @@ using ttl_t = uint8_t;
 using data_t = std::string;
 using timestamp_t = uint32_t;
 using msg_uuid_t = uint32_t;
-using snr_t = int8_t;
+using lqs_t = int8_t;  // link quality score
 
 /// assert
 static_assert(std::is_trivial<addr_t>::value, "");
@@ -29,7 +29,8 @@ static_assert(std::is_trivial<msg_uuid_t>::value, "");
 static_assert(sizeof(msg_uuid_t) >= sizeof(addr_t) + sizeof(seq_t), "msg_uuid: [src, seq]");
 
 /// handle
-using recv_handle_t = std::function<void(addr_t, data_t)>;
+using recv_handle_t = std::function<void(std::string, mesh_core::lqs_t)>;
+using on_recv_handle_t = std::function<void(addr_t, data_t)>;
 using time_sync_handle_t = std::function<void(timestamp_t)>;
 
 /// default value

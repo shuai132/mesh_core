@@ -59,14 +59,14 @@ struct Impl {
   /**
    * @param data binary data to broadcast
    */
-  void broadcast(std::string data) {
+  static void broadcast(std::string data) {
     (void)(data);
   }
 
   /**
    * @param handle store it, call it on receive broadcast.
    */
-  void set_recv_handle(std::function<void(std::string)> handle) {
+  static void set_recv_handle(mesh_core::recv_handle_t handle) {
     (void)(handle);
   }
 

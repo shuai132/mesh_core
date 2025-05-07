@@ -15,7 +15,6 @@ struct route_msg : detail::copyable {
   addr_t dst{};
   addr_t next_hop{};
   uint8_t metric{};
-  addr_t learn_from{};
 };
 #pragma pack()
 
@@ -24,7 +23,7 @@ struct route_info : detail::copyable {
   addr_t next_hop{};
   uint8_t metric{};
 
-  snr_t snr{};
+  lqs_t snr{};
   timestamp_t expired{};
 };
 

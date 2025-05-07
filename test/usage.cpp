@@ -18,7 +18,7 @@ struct Impl {
   /**
    * @param handle store it, call it on receive broadcast.
    */
-  static void set_recv_handle(std::function<void(std::string, mesh_core::snr_t)> handle) {
+  static void set_recv_handle(mesh_core::recv_handle_t handle) {
     (void)(handle);
   }
 
