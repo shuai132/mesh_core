@@ -55,6 +55,11 @@ class mesh : detail::noncopyable {
       MESH_CORE_LOGE("data size > %d", message::DataSizeMax);
       return;
     }
+    auto info = route_table_.find_node(addr);
+    if (info == nullptr) {
+      MESH_CORE_LOGD("send: unreachable");
+      return;
+    }
     message m;
     m.type = message_type::user_data;
     m.src = addr_;
@@ -62,6 +67,7 @@ class mesh : detail::noncopyable {
     m.seq = seq_++;
     m.ttl = TTL_DEFAULT;
     m.ts = impl_->get_timestamp_ms();
+    m.next_hop = info->next_hop;
     m.data = std::move(data);
     m.finalize();
     broadcast(std::move(m));
@@ -124,18 +130,18 @@ class mesh : detail::noncopyable {
   void dump_debug() {
     MESH_CORE_LOGD("route table: size: %u", (uint32_t)route_table_.get_table().size());
     for (const auto& item : route_table_.get_table()) {
-      MESH_CORE_LOGD("dst: 0x%02X, next_hop: 0x%02X, metric: %d, snr: %d, expired: 0x%08X", item.dst, item.next_hop, item.metric, item.snr,
+      MESH_CORE_LOGD("dst: 0x%02X, next_hop: 0x%02X, metric: %d, lqs: %d, expired: 0x%08X", item.dst, item.next_hop, item.metric, item.lqs,
                      item.expired);
     }
   }
 
  private:
   void init() {
-    impl_->set_recv_handle([this](const std::string& payload, lqs_t snr) {
+    impl_->set_recv_handle([this](const std::string& payload, lqs_t lqs) {
       bool ok = false;
       auto msg = message::deserialize(payload, ok);
       if (ok) {
-        this->dispatch(std::move(msg), snr);
+        this->dispatch(std::move(msg), lqs);
       } else {
         MESH_CORE_LOGE("deserialize error");
       }
@@ -206,10 +212,10 @@ class mesh : detail::noncopyable {
     broadcast(std::move(m));
   }
 
-  void dispatch(message msg, lqs_t snr) {
+  void dispatch(message msg, lqs_t lqs) {
     // clang-format off
-    MESH_CORE_LOGD("=>: self: 0x%02X, type: %d, src: 0x%02X, dst: 0x%02X, seq: %u, ttl: %u, ts: 0x%08X, snr: %d, data: %s",
-                   addr_, (int)msg.type, msg.src, msg.dst, msg.seq, msg.ttl, msg.ts, snr, msg.data.c_str());
+    MESH_CORE_LOGD("=>: self: 0x%02X, type: %d, src: 0x%02X, dst: 0x%02X, next_hop: 0x%02X, seq: %u, ttl: %u, ts: 0x%08X, lqs: %d, data: %s",
+                   addr_, (int)msg.type, msg.src, msg.dst, msg.next_hop, msg.seq, msg.ttl, msg.ts, lqs, msg.data.c_str());
     // clang-format on
 
     /// interceptor
@@ -229,7 +235,7 @@ class mesh : detail::noncopyable {
     /// dispatch
     switch (msg.type) {
       case message_type::route_info: {
-        dispatch_route_info(msg, snr);
+        dispatch_route_info(msg, lqs);
 #ifdef MESH_CORE_LOG_SHOW_DEBUG
         dump_debug();
 #endif
@@ -247,7 +253,7 @@ class mesh : detail::noncopyable {
     }
   }
 
-  void dispatch_route_info(const message& message, lqs_t snr) {
+  void dispatch_route_info(const message& message, lqs_t lqs) {
     auto route_msg_ptr = (route_msg*)(message.data.data());
     uint32_t route_msg_num = message.data.size() / sizeof(route_msg);
     MESH_CORE_LOGD("update route info: size: %u", route_msg_num);
@@ -267,12 +273,12 @@ class mesh : detail::noncopyable {
       info_new.dst = route_msg->dst;
       info_new.next_hop = route_msg->next_hop;
       info_new.metric = route_msg->metric + 1;
-      info_new.snr = snr;
+      info_new.lqs = lqs;
       info_new.expired = get_timestamp();
       if (info_old == nullptr) {
         route_table_.add(info_new);
       } else {
-        if ((info_new.metric < info_old->metric) || (info_new.metric == info_old->metric && info_new.snr > info_old->snr)) {
+        if ((info_new.metric < info_old->metric) || (info_new.metric == info_old->metric && info_new.lqs > info_old->lqs)) {
           *info_old = info_new;
         } else if (info_new.metric == info_old->metric) {
           info_old->expired = get_timestamp();
@@ -292,6 +298,10 @@ class mesh : detail::noncopyable {
       MESH_CORE_LOGD("drop: disable routing");
       return;
     }
+    if (--message.ttl == 0) {
+      MESH_CORE_LOGD("drop: ttl=0, src: 0x%02X, seq: %u", message.src, message.seq);
+      return;
+    }
     if (message.next_hop != this->addr_) {
       MESH_CORE_LOGD("drop: route not me");
       return;
@@ -302,7 +312,7 @@ class mesh : detail::noncopyable {
       return;
     }
     message.next_hop = info->next_hop;
-    MESH_CORE_LOGD("send to next hop: ttl = %u", message.ttl);
+    MESH_CORE_LOGD("next hop: 0x%02X, ttl = %u", message.next_hop, message.ttl);
     broadcast(std::move(message));
   }
 
