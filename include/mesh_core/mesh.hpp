@@ -221,6 +221,11 @@ class mesh : detail::noncopyable {
       }
     }
 
+    /// filter
+    if (!message_filter(msg)) {
+      return;
+    }
+
     /// dispatch
     switch (msg.type) {
       case message_type::route_info: {
@@ -287,10 +292,6 @@ class mesh : detail::noncopyable {
       MESH_CORE_LOGD("drop: disable routing");
       return;
     }
-    if (--message.ttl == 0) {
-      MESH_CORE_LOGD("drop: ttl=0, src: 0x%02X, seq: %u", message.src, message.seq);
-      return;
-    }
     if (message.next_hop != this->addr_) {
       MESH_CORE_LOGD("drop: route not me");
       return;
@@ -306,26 +307,6 @@ class mesh : detail::noncopyable {
   }
 
   void dispatch_any_broadcast(message message) {
-    /// self check
-    if (message.src == this->addr_) {
-      MESH_CORE_LOGD("drop: self message");
-      return;
-    }
-
-    /// ttl check
-    if (message.ttl > TTL_DEFAULT) {
-      MESH_CORE_LOGD("drop: ttl error: %u", message.ttl);
-      return;
-    }
-
-    /// cache manager
-    auto uuid = message.cal_uuid();
-    if (msg_uuid_cache_.exists(uuid)) {
-      MESH_CORE_LOGD("drop: msg is old, src: 0x%02X, seq: %u, uuid: 0x%08X", message.src, message.seq, uuid);
-      return;
-    }
-    msg_uuid_cache_.put(uuid);
-
     /// special message check
     if (message.type == message_type::broadcast) {
       if (on_recv_handle_) on_recv_handle_(message.src, message.data);  // do not move data
@@ -336,7 +317,7 @@ class mesh : detail::noncopyable {
 
     /// rebroadcast message
     if (enable_routing_) {
-      if (--message.ttl == 0) {  // drop message
+      if (--message.ttl == 0) {
         MESH_CORE_LOGD("drop: ttl=0, src: 0x%02X, seq: %u", message.src, message.seq);
         return;
       }
@@ -352,6 +333,29 @@ class mesh : detail::noncopyable {
 
   uint16_t random(uint16_t l, uint16_t r) {
     return utils::time_based_random(impl_->get_timestamp_ms() + addr_ + seq_, l, r);
+  }
+
+  bool message_filter(message& message) {
+    /// self check
+    if (message.src == this->addr_) {
+      MESH_CORE_LOGD("filter: self msg");
+      return false;
+    }
+
+    /// ttl check
+    if (message.ttl > TTL_DEFAULT) {
+      MESH_CORE_LOGD("filter: ttl error: %u", message.ttl);
+      return false;
+    }
+
+    /// cache manager
+    auto uuid = message.cal_uuid();
+    if (msg_uuid_cache_.exists(uuid)) {
+      MESH_CORE_LOGD("filter: msg is old, src: 0x%02X, seq: %u, uuid: 0x%08X", message.src, message.seq, uuid);
+      return false;
+    }
+    msg_uuid_cache_.put(uuid);
+    return true;
   }
 
  private:
