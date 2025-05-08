@@ -4,6 +4,10 @@
 
 A lightweight mesh library, based on distance-vector routing algorithm.
 
+## Wiki
+
+https://deepwiki.com/shuai132/mesh_core
+
 ## Features
 
 * Header-Only
@@ -53,7 +57,7 @@ A lightweight mesh library, based on distance-vector routing algorithm.
  *
  * NOTE:
  * 1. broadcast and recv_handle should ensure packet is complete
- * 2. all methods can be static
+ * 2. all methods can be static or non-static
  */
 struct Impl {
   /**
@@ -90,7 +94,7 @@ struct Impl {
 int main() {
   Impl impl;
   mesh_core::mesh<Impl> mesh(&impl);
-  mesh.set_addr(0x00);
+  mesh.init(0x00);
   mesh.on_recv([](mesh_core::addr_t addr, const mesh_core::data_t& data) {
     MESH_CORE_LOG("addr: 0x%02X, data: %s", addr, data.c_str());
   });
