@@ -18,6 +18,7 @@ if (MESH_CORE_BUILD_TEST)
     # add_definitions(-DMESH_CORE_LOG_SHOW_VERBOSE)
 
     # config for test
+    add_definitions(-DMESH_CORE_DEBUG_TS_SAVE_SEND_FROM)
     add_definitions(-DMESH_CORE_ROUTE_EXPIRED_MS=30000)
     add_definitions(-DMESH_CORE_ROUTE_INTERVAL_MS=10000)
 

@@ -26,7 +26,7 @@ static_assert(std::is_trivial<addr_t>::value, "");
 static_assert(std::is_trivial<seq_t>::value, "");
 static_assert(std::is_trivial<ttl_t>::value, "");
 static_assert(std::is_trivial<msg_uuid_t>::value, "");
-static_assert(sizeof(msg_uuid_t) >= sizeof(addr_t) + sizeof(seq_t), "msg_uuid: [src, seq]");
+static_assert(sizeof(msg_uuid_t) >= sizeof(addr_t) + sizeof(seq_t), "msg_uuid: [src, seq, ts]");
 
 /// handle
 using recv_handle_t = std::function<void(std::string, mesh_core::lqs_t)>;

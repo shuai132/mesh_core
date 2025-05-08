@@ -77,7 +77,7 @@ struct message : detail::copyable {
     static_assert(std::is_same<msg_uuid_t, uint32_t>::value, "");
     static_assert(std::is_same<ttl_t, uint8_t>::value, "");
     static_assert(std::is_same<timestamp_t, uint32_t>::value, "");
-    // uuid: {src|seq|ts}
+    // uuid: {src|seq|ts}, ts is for ensure message is unique after reboot
     return (src << 24) | (seq << 16) | (uint16_t(ts & 0x0000FFFF));
   }
 
