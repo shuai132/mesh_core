@@ -9,6 +9,7 @@ static asio::ip::udp::socket s_socket(s_io_context);
 const asio::ip::udp::endpoint broadcast_endpoint(asio::ip::address_v4::broadcast(), 12345);
 
 static void udp_broadcast(std::string data);
+static mesh_core::addr_t self_addr;
 
 struct Impl {
   mesh_core::recv_handle_t recv_handle;
@@ -38,8 +39,10 @@ struct Impl {
 };
 
 static void udp_broadcast(std::string data) {
-  MESH_CORE_LOGD("UPD send size: %zu", data.size());
-  MESH_CORE_LOGD_HEX(data.data(), data.size());
+  MESH_CORE_LOGD("UDP send size: %zu", data.size());
+  MESH_CORE_LOGD_HEX_H(data.data(), data.size());
+  MESH_CORE_LOGD_HEX_D(data.data(), data.size());
+  MESH_CORE_LOGD_HEX_C(data.data(), data.size());
   s_socket.async_send_to(asio::buffer(data), broadcast_endpoint, [](const asio::error_code& ec, std::size_t) {
     if (ec) {
       MESH_CORE_LOGE("Send error: %s", ec.message().c_str());
@@ -52,13 +55,29 @@ static void start_recv(Impl& impl) {
   static asio::ip::udp::endpoint sender_endpoint;
   s_socket.async_receive_from(asio::buffer(recv_buffer), sender_endpoint, [&](const asio::error_code& ec, std::size_t bytes_received) {
     if (!ec) {
-      std::string message = std::string(recv_buffer.data(), bytes_received);
-      MESH_CORE_LOGD("UPD recv size: %zu", message.size());
-      MESH_CORE_LOGD_HEX(message.data(), message.size());
-      impl.recv_handle(message, 0);
+      std::string payload = std::string(recv_buffer.data(), bytes_received);
+      MESH_CORE_LOGD("UDP recv size: %zu", payload.size());
+      MESH_CORE_LOGD_HEX_H(payload.data(), payload.size());
+      MESH_CORE_LOGD_HEX_D(payload.data(), payload.size());
+      MESH_CORE_LOGD_HEX_C(payload.data(), payload.size());
+      {
+        // ignore msg which addr diff >= 10, for test routing
+        bool ok;
+        auto msg = mesh_core::message::deserialize(payload, ok);
+        if (ok) {
+          auto recv_from = static_cast<mesh_core::addr_t>(msg.ts >> 24);
+          if (std::abs(recv_from - self_addr) < 10) {
+            impl.recv_handle(payload, 0);
+          } else {
+            MESH_CORE_LOGD("ignore from: 0x%02X", recv_from);
+          }
+        } else {
+          MESH_CORE_LOGD("deserialize error");
+        }
+      }
       start_recv(impl);
     } else {
-      MESH_CORE_LOGE("UPD error: %s", ec.message().c_str());
+      MESH_CORE_LOGE("UDP error: %s", ec.message().c_str());
     }
   });
 }
@@ -76,6 +95,7 @@ int main() {
   std::cout << "set addr: ";
   std::cin >> addr;
   printf("addr is: 0x%02X\n", addr);
+  self_addr = addr;
 
   using namespace mesh_core;
   Impl impl;
@@ -86,14 +106,6 @@ int main() {
   });
   mesh.on_sync_time([](timestamp_t ts) {
     MESH_CORE_LOG("on_sync_time: 0x%08X", ts);
-  });
-
-  mesh.set_dispatch_interceptor([&mesh](message& msg) {
-    // ignore msg which addr diff >= 10
-    if (std::abs(msg.src - mesh.addr()) >= 10) {
-      return false;
-    }
-    return true;
   });
 
   init_udp_impl(impl);

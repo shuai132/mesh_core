@@ -187,6 +187,12 @@ class mesh : detail::noncopyable {
   }
 
   void broadcast(message msg) {
+#ifdef MESH_CORE_DEBUG_TS_SAVE_SEND_FROM
+    // for test, ts only use low 16bit for now
+    msg.ts &= 0x00FFFFFF;
+    msg.ts |= ((uint32_t)addr_ << 24);
+#endif
+
     /// interceptor
     if (broadcast_interceptor_) {
       bool should_continue = broadcast_interceptor_(msg);
@@ -229,6 +235,10 @@ class mesh : detail::noncopyable {
     MESH_CORE_LOGD("=>: self: 0x%02X, type: %d, src: 0x%02X, dst: 0x%02X, next_hop: 0x%02X, seq: %u, ttl: %u, ts: 0x%08X, lqs: %d, data: %s",
                    addr_, (int)msg.type, msg.src, msg.dst, msg.next_hop, msg.seq, msg.ttl, msg.ts, lqs, msg.data.c_str());
     // clang-format on
+
+#ifdef MESH_CORE_DEBUG_TS_SAVE_SEND_FROM
+    MESH_CORE_LOGD("from: 0x%02X", static_cast<mesh_core::addr_t>(msg.ts >> 24));
+#endif
 
     /// interceptor
     if (dispatch_interceptor_) {
