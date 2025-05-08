@@ -38,11 +38,11 @@ namespace mesh_core {
 /// └─────────┴──────────────┴───────────────────┴───────────────────────────────┘
 
 enum class message_type : uint8_t {
-  route_info,
-  route_info_and_request,
-  user_data,
-  broadcast,
-  sync_time,
+  route_info = 0,
+  route_info_and_request = 1,
+  user_data = 2,
+  broadcast = 3,
+  sync_time = 4,
 };
 
 struct message : detail::copyable {

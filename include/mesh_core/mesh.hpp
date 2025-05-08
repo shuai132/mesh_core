@@ -28,9 +28,9 @@ class mesh : detail::noncopyable {
  public:
   explicit mesh(Impl* impl) : impl_(impl) {}
 
-  void init(addr_t addr) {
+  void init(addr_t addr, bool enable_dv_routing = true) {
     addr_ = addr;
-    init();
+    init_(enable_dv_routing);
   }
 
   addr_t addr() {
@@ -113,6 +113,15 @@ class mesh : detail::noncopyable {
     return m.ts;
   }
 
+  void add_static_route(addr_t dst, addr_t next_hop) {
+    route_info info;
+    info.dst = dst;
+    info.next_hop = next_hop;
+    info.metric = 1;
+    info.type = route_type::STATIC;
+    route_table_.add(info);
+  }
+
   /**
    * @param interceptor return true for continue
    */
@@ -136,7 +145,7 @@ class mesh : detail::noncopyable {
   }
 
  private:
-  void init() {
+  void init_(bool enable_dv_routing) {
     impl_->set_recv_handle([this](const std::string& payload, lqs_t lqs) {
       bool ok = false;
       auto msg = message::deserialize(payload, ok);
@@ -147,23 +156,25 @@ class mesh : detail::noncopyable {
       }
     });
 
-    route_info info;
-    info.dst = addr_;
-    info.metric = 0;
-    route_table_.add(info);
+    if (enable_dv_routing) {
+      route_info info;
+      info.dst = addr_;
+      info.metric = 0;
+      route_table_.add(info);
 
-    sync_route(true);
-    run_interval(
-        [this] {
-          sync_route();
-        },
-        MESH_CORE_ROUTE_INTERVAL_MS);
+      sync_route(true);
+      run_interval(
+          [this] {
+            sync_route();
+          },
+          MESH_CORE_ROUTE_INTERVAL_MS);
 
-    run_interval(
-        [this] {
-          route_table_.check_expired(get_timestamp());
-        },
-        1 * 1000);
+      run_interval(
+          [this] {
+            route_table_.check_expired(get_timestamp());
+          },
+          1 * 1000);
+    }
   }
 
   void run_interval(std::function<void()> handle, uint32_t ms) {

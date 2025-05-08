@@ -18,6 +18,10 @@ struct route_msg : detail::copyable {
 };
 #pragma pack()
 
+enum class route_type {
+  DYNAMIC = 0,
+  STATIC = 1,
+};
 struct route_info : detail::copyable {
   addr_t dst{};
   addr_t next_hop{};
@@ -25,6 +29,7 @@ struct route_info : detail::copyable {
 
   lqs_t lqs{};
   timestamp_t expired{};
+  route_type type{route_type::DYNAMIC};
 };
 
 // [ {dst, next_hop, metric}, ...]
@@ -45,13 +50,22 @@ class route_table : detail::noncopyable {
     table_.push_back(std::move(info));
   }
 
+  void rm(addr_t dst) {
+    table_.remove_if([dst](const route_info& i) {
+      return i.dst == dst;
+    });
+  }
+
   const std::list<route_info>& get_table() {
     return table_;
   }
 
   void check_expired(timestamp_t ts) {
     table_.remove_if([&ts](route_info& info) {
-      if (info.metric == 0) {  // is self
+      if (info.metric == 0) {  // skip self
+        return false;
+      }
+      if (info.type == route_type::STATIC) {  // skip static route
         return false;
       }
       if (ts - info.expired > MESH_CORE_ROUTE_EXPIRED_MS) {
