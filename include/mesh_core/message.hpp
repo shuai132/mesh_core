@@ -39,6 +39,7 @@ namespace mesh_core {
 
 enum class message_type : uint8_t {
   route_info,
+  route_info_and_request,
   user_data,
   broadcast,
   sync_time,
