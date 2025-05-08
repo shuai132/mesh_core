@@ -152,6 +152,7 @@ class mesh : detail::noncopyable {
     info.metric = 0;
     route_table_.add(info);
 
+    sync_route(true);
     run_interval(
         [this] {
           sync_route();
@@ -194,9 +195,9 @@ class mesh : detail::noncopyable {
     }
   }
 
-  void sync_route() {
+  void sync_route(bool request = false) {
     message m;
-    m.type = message_type::route_info;
+    m.type = request ? message_type::route_info_and_request : message_type::route_info;
     m.src = addr_;
     m.seq = seq_++;
     m.ttl = TTL_DEFAULT;
@@ -234,11 +235,15 @@ class mesh : detail::noncopyable {
 
     /// dispatch
     switch (msg.type) {
-      case message_type::route_info: {
+      case message_type::route_info:
+      case message_type::route_info_and_request: {
         dispatch_route_info(msg, lqs);
 #ifdef MESH_CORE_LOG_SHOW_DEBUG
         dump_debug();
 #endif
+        if (msg.type == message_type::route_info_and_request) {
+          sync_route(false);
+        }
         return;
       } break;
       case message_type::user_data: {

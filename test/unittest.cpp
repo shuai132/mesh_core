@@ -12,7 +12,7 @@ struct Impl {
 
   void broadcast(const std::string& data) {
     for (const auto& item : recv_handles) {
-      asio::post(s_io_context, [&item, data] {
+      asio::post(s_io_context, [item, data] {
         item(data, 0);
       });
     }
