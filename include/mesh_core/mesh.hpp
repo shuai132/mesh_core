@@ -289,53 +289,53 @@ class mesh : detail::noncopyable {
     }
   }
 
-  void dispatch_userdata(message message) {
-    if (message.dst == this->addr_) {
-      if (on_recv_handle_) on_recv_handle_(message.src, std::move(message.data));
+  void dispatch_userdata(message msg) {
+    if (msg.dst == this->addr_) {
+      if (on_recv_handle_) on_recv_handle_(msg.src, std::move(msg.data));
       return;
     }
     if (!enable_routing_) {
       MESH_CORE_LOGD("drop: disable routing");
       return;
     }
-    if (--message.ttl == 0) {
-      MESH_CORE_LOGD("drop: ttl=0, src: 0x%02X, seq: %u", message.src, message.seq);
+    if (--msg.ttl == 0) {
+      MESH_CORE_LOGD("drop: ttl=0, src: 0x%02X, seq: %u", msg.src, msg.seq);
       return;
     }
-    if (message.next_hop != this->addr_) {
+    if (msg.next_hop != this->addr_) {
       MESH_CORE_LOGD("drop: route not me");
       return;
     }
-    auto info = route_table_.find_node(message.dst);
+    auto info = route_table_.find_node(msg.dst);
     if (info == nullptr) {
       MESH_CORE_LOGD("drop: no route");
       return;
     }
-    message.next_hop = info->next_hop;
-    MESH_CORE_LOGD("next hop: 0x%02X, ttl = %u", message.next_hop, message.ttl);
-    broadcast(std::move(message));
+    msg.next_hop = info->next_hop;
+    MESH_CORE_LOGD("next hop: 0x%02X, ttl = %u", msg.next_hop, msg.ttl);
+    broadcast(std::move(msg));
   }
 
-  void dispatch_any_broadcast(message message) {
+  void dispatch_any_broadcast(message msg) {
     /// special message check
-    if (message.type == message_type::broadcast) {
-      if (on_recv_handle_) on_recv_handle_(message.src, message.data);  // do not move data
-    } else if (message.type == message_type::sync_time) {
-      MESH_CORE_LOGD("sync ts: ttl=0, src: 0x%02X, seq: %u", message.src, message.seq);
-      if (time_sync_handle_) time_sync_handle_(message.ts);
+    if (msg.type == message_type::broadcast) {
+      if (on_recv_handle_) on_recv_handle_(msg.src, msg.data);  // do not move data
+    } else if (msg.type == message_type::sync_time) {
+      MESH_CORE_LOGD("sync ts: ttl=0, src: 0x%02X, seq: %u", msg.src, msg.seq);
+      if (time_sync_handle_) time_sync_handle_(msg.ts);
     }
 
     /// rebroadcast message
     if (enable_routing_) {
-      if (--message.ttl == 0) {
-        MESH_CORE_LOGD("drop: ttl=0, src: 0x%02X, seq: %u", message.src, message.seq);
+      if (--msg.ttl == 0) {
+        MESH_CORE_LOGD("drop: ttl=0, src: 0x%02X, seq: %u", msg.src, msg.seq);
         return;
       }
 
-      MESH_CORE_LOGD("rebroadcast: ttl = %u", message.ttl);
+      MESH_CORE_LOGD("rebroadcast: ttl = %u", msg.ttl);
       impl_->run_delay(
-          [this, message = std::move(message)]() mutable {
-            broadcast(std::move(message));
+          [this, msg = std::move(msg)]() mutable {
+            broadcast(std::move(msg));
           },
           random(DELAY_MIN, DELAY_MAX));
     }
@@ -345,23 +345,23 @@ class mesh : detail::noncopyable {
     return utils::time_based_random(impl_->get_timestamp_ms() + addr_ + seq_, l, r);
   }
 
-  bool message_filter(message& message) {
+  bool message_filter(message& msg) {
     /// self check
-    if (message.src == this->addr_) {
+    if (msg.src == this->addr_) {
       MESH_CORE_LOGD("filter: self msg");
       return false;
     }
 
     /// ttl check
-    if (message.ttl > TTL_DEFAULT) {
-      MESH_CORE_LOGD("filter: ttl error: %u", message.ttl);
+    if (msg.ttl > TTL_DEFAULT) {
+      MESH_CORE_LOGD("filter: ttl error: %u", msg.ttl);
       return false;
     }
 
     /// cache manager
-    auto uuid = message.cal_uuid();
+    auto uuid = msg.cal_uuid();
     if (msg_uuid_cache_.exists(uuid)) {
-      MESH_CORE_LOGD("filter: msg is old, src: 0x%02X, seq: %u, uuid: 0x%08X", message.src, message.seq, uuid);
+      MESH_CORE_LOGD("filter: msg is old, src: 0x%02X, seq: %u, uuid: 0x%08X", msg.src, msg.seq, uuid);
       return false;
     }
     msg_uuid_cache_.put(uuid);
