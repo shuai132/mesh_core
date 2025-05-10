@@ -20,7 +20,7 @@ if (MESH_CORE_BUILD_TEST)
     # config for test
     add_definitions(-DMESH_CORE_DEBUG_TS_SAVE_SEND_FROM)
     add_definitions(-DMESH_CORE_ROUTE_EXPIRED_MS=30000)
-    add_definitions(-DMESH_CORE_ROUTE_INTERVAL_MS=10000)
+    add_definitions(-DMESH_CORE_ROUTE_SYNC_INTERVAL_MS=10000)
 
     message(STATUS "ASIO_PATH: $ENV{ASIO_PATH}")
     add_definitions(-DASIO_NO_DEPRECATED)

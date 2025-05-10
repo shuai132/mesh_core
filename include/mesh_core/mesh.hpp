@@ -15,7 +15,6 @@
 
 // std
 #include <functional>
-#include <memory>
 #include <string>
 
 namespace mesh_core {
@@ -167,18 +166,18 @@ class mesh : detail::noncopyable {
           [this] {
             sync_route();
           },
-          MESH_CORE_ROUTE_INTERVAL_MS);
+          MESH_CORE_ROUTE_SYNC_INTERVAL_MS);
 
       run_interval(
           [this] {
             route_table_.check_expired(get_timestamp());
           },
-          1 * 1000);
+          MESH_CORE_ROUTE_CHECK_EXPIRED_INTERVAL_MS);
     }
   }
 
   void run_interval(std::function<void()> handle, uint32_t ms) {
-    auto task = std::make_shared<std::function<void()>>();
+    auto task = new std::function<void()>();  // no delete/cancel for now
     *task = [this, handle = std::move(handle), ms, task]() {
       handle();
       impl_->run_delay(*task, ms);
