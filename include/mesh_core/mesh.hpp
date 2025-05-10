@@ -212,21 +212,35 @@ class mesh : detail::noncopyable {
   }
 
   void sync_route(bool request = false) {
-    message m;
-    m.type = request ? message_type::route_info_and_request : message_type::route_info;
-    m.src = addr_;
-    m.seq = seq_++;
-    m.ttl = TTL_DEFAULT;
-    m.ts = get_timestamp();
-    route_msg rm;
-    for (const auto& item : route_table_.get_table()) {
-      rm.dst = item.dst;
-      rm.next_hop = addr_;
-      rm.metric = item.metric;
-      m.data.append((char*)&rm, sizeof(rm));
+    const auto& table = route_table_.get_table();
+    const int max_per_msg = 3;  //(int)(message::DataSizeMax / sizeof(route_msg));
+    auto it = table.begin();
+    while (it != table.end()) {
+      message m;
+      m.type = message_type::route_info;
+      m.src = addr_;
+      m.seq = seq_++;
+      m.ttl = TTL_DEFAULT;
+      m.ts = get_timestamp();
+
+      int count = 0;
+      route_msg rm;
+      while (it != table.end() && count < max_per_msg) {
+        const auto& item = *it;
+        rm.dst = item.dst;
+        rm.next_hop = addr_;
+        rm.metric = item.metric;
+        m.data.append(reinterpret_cast<const char*>(&rm), sizeof(rm));
+        ++it;
+        ++count;
+      }
+
+      if (it == table.cend() && request) {
+        m.type = message_type::route_info_and_request;
+      }
+      m.finalize();
+      broadcast(std::move(m));
     }
-    m.finalize();
-    broadcast(std::move(m));
   }
 
   void dispatch(message msg, lqs_t lqs) {
@@ -280,8 +294,9 @@ class mesh : detail::noncopyable {
 
   void dispatch_route_info(const message& message, lqs_t lqs) {
     auto route_msg_ptr = (route_msg*)(message.data.data());
-    uint32_t route_msg_num = message.data.size() / sizeof(route_msg);
-    MESH_CORE_LOGD("update route info: size: %u", route_msg_num);
+    int route_msg_num = (int)(message.data.size() / sizeof(route_msg));
+
+    MESH_CORE_LOGD("update route info: size: %d", route_msg_num);
     for (int i = 0; i < route_msg_num; ++i) {
       auto route_msg = route_msg_ptr + i;
       MESH_CORE_LOGD("dst: 0x%02X, next_hop: 0x%02X, metric: %d", route_msg->dst, route_msg->next_hop, route_msg->metric);
