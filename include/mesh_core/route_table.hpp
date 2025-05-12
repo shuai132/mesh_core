@@ -32,7 +32,6 @@ struct route_info : detail::copyable {
   route_type type{route_type::DYNAMIC};
 };
 
-// [ {dst, next_hop, metric}, ...]
 class route_table : detail::noncopyable {
  public:
   route_info* find_node(addr_t dst) {
@@ -47,7 +46,12 @@ class route_table : detail::noncopyable {
   }
 
   void add(route_info info) {
-    table_.push_back(std::move(info));
+    auto old = find_node(info.dst);
+    if (old == nullptr) {
+      table_.push_back(std::move(info));
+    } else {
+      *old = info;
+    }
   }
 
   void rm(addr_t dst) {

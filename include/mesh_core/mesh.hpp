@@ -40,25 +40,12 @@ class mesh : detail::noncopyable {
     enable_routing_ = enable;
   }
 
-  void router_only() {
-    enable_routing(true);
-    route_only_ = true;
-  }
-
-  bool is_router_only() {
-    return route_only_;
-  }
-
   void send(addr_t addr, data_t data) {
     if (data.size() > message::DataSizeMax) {
       MESH_CORE_LOGE("data size > %d", message::DataSizeMax);
       return;
     }
-    auto info = route_table_.find_node(addr);
-    if (info == nullptr) {
-      MESH_CORE_LOGD("send: unreachable");
-      return;
-    }
+
     message m;
     m.type = message_type::user_data;
     m.src = addr_;
@@ -66,7 +53,8 @@ class mesh : detail::noncopyable {
     m.seq = seq_++;
     m.ttl = TTL_DEFAULT;
     m.ts = impl_->get_timestamp_ms();
-    m.next_hop = info->next_hop;
+    auto info = route_table_.find_node(addr);
+    m.next_hop = info ? info->next_hop : addr_;
     m.data = std::move(data);
     m.finalize();
     broadcast(std::move(m));
@@ -151,7 +139,7 @@ class mesh : detail::noncopyable {
       if (ok) {
         this->dispatch(std::move(msg), lqs);
       } else {
-        MESH_CORE_LOGE("deserialize error");
+        MESH_CORE_LOGV("deserialize error");
       }
     });
 
@@ -213,7 +201,7 @@ class mesh : detail::noncopyable {
 
   void sync_route(bool request = false) {
     const auto& table = route_table_.get_table();
-    const int max_per_msg = 3;  //(int)(message::DataSizeMax / sizeof(route_msg));
+    const int max_per_msg = (int)(message::DataSizeMax / sizeof(route_msg));
     auto it = table.begin();
     while (it != table.end()) {
       message m;
@@ -323,7 +311,7 @@ class mesh : detail::noncopyable {
         } else if (info_new.metric == info_old->metric) {
           info_old->expired = get_timestamp();
         } else {
-          MESH_CORE_LOGD("ignore");
+          MESH_CORE_LOGD("ignore route item");
         }
       }
     }
@@ -381,7 +369,7 @@ class mesh : detail::noncopyable {
     }
   }
 
-  uint16_t random(uint16_t l, uint16_t r) {
+  uint32_t random(uint32_t l, uint32_t r) {
     return utils::time_based_random(impl_->get_timestamp_ms() + addr_ + seq_, l, r);
   }
 
@@ -414,7 +402,6 @@ class mesh : detail::noncopyable {
   broadcast_interceptor_t broadcast_interceptor_;
   dispatch_interceptor_t dispatch_interceptor_;
   addr_t addr_{};
-  bool route_only_{};
   seq_t seq_{};
   detail::lru_record<msg_uuid_t> msg_uuid_cache_{LRU_RECORD_SIZE};
   route_table route_table_;

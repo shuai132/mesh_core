@@ -99,6 +99,7 @@ int main() {
 
   using namespace mesh_core;
   Impl impl;
+  init_udp_impl(impl);
   mesh<Impl> mesh(&impl);
   mesh.init(addr);
   mesh.on_recv([](addr_t addr, const data_t& data) {
@@ -107,8 +108,6 @@ int main() {
   mesh.on_sync_time([](timestamp_t ts) {
     MESH_CORE_LOG("on_sync_time: 0x%08X", ts);
   });
-
-  init_udp_impl(impl);
 
   std::thread([&] {
     for (;;) {
