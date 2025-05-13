@@ -24,7 +24,7 @@ inline uint32_t time_based_random(uint32_t timestamp, uint32_t l, uint32_t r) {
  * @param size
  * @return
  */
-inline uint16_t crc16(const void* data, uint16_t size) {
+inline uint16_t crc16(const void* data, size_t size) {
   auto d = (uint8_t*)data;
   uint16_t crc = 0xFFFF;
   static const uint16_t crc_table[16] = {0x0000, 0x1021, 0x2042, 0x3063, 0x4084, 0x50A5, 0x60C6, 0x70E7,

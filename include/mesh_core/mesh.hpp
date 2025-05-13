@@ -397,16 +397,16 @@ class mesh : detail::noncopyable {
   }
 
  private:
-  on_recv_handle_t on_recv_handle_;
-  time_sync_handle_t time_sync_handle_;
-  broadcast_interceptor_t broadcast_interceptor_;
-  dispatch_interceptor_t dispatch_interceptor_;
+  Impl* impl_{};
   addr_t addr_{};
   seq_t seq_{};
   detail::lru_record<msg_uuid_t> msg_uuid_cache_{LRU_RECORD_SIZE};
   route_table route_table_;
   bool enable_routing_{true};
-  Impl* impl_{};
+  on_recv_handle_t on_recv_handle_;
+  time_sync_handle_t time_sync_handle_;
+  broadcast_interceptor_t broadcast_interceptor_;
+  dispatch_interceptor_t dispatch_interceptor_;
 };
 
 }  // namespace mesh_core

@@ -2,6 +2,10 @@
 
 // config
 #include "config.hpp"
+#include "detail/copyable.hpp"
+#include "detail/log.h"
+#include "detail/noncopyable.hpp"
+#include "type.hpp"
 
 // std
 #include <cstdint>
@@ -22,6 +26,7 @@ enum class route_type {
   DYNAMIC = 0,
   STATIC = 1,
 };
+
 struct route_info : detail::copyable {
   addr_t dst{};
   addr_t next_hop{};
@@ -48,7 +53,7 @@ class route_table : detail::noncopyable {
   void add(route_info info) {
     auto old = find_node(info.dst);
     if (old == nullptr) {
-      table_.push_back(std::move(info));
+      table_.push_back(info);
     } else {
       *old = info;
     }
