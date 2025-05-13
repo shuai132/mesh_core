@@ -14,6 +14,7 @@
 #include "mesh_core/utils.hpp"
 
 // std
+#include <cinttypes>
 #include <functional>
 #include <string>
 
@@ -124,9 +125,9 @@ class mesh : detail::noncopyable {
   }
 
   void dump_debug() {
-    MESH_CORE_LOGD("route table: size: %u", (uint32_t)route_table_.get_table().size());
+    MESH_CORE_LOGD("route table: size: %" PRIu32, (uint32_t)route_table_.get_table().size());
     for (const auto& item : route_table_.get_table()) {
-      MESH_CORE_LOGD("dst: 0x%02X, next_hop: 0x%02X, metric: %d, lqs: %d, expired: 0x%08X", item.dst, item.next_hop, item.metric, item.lqs,
+      MESH_CORE_LOGD("dst: 0x%02X, next_hop: 0x%02X, metric: %d, lqs: %d, expired: 0x%08" PRIX32, item.dst, item.next_hop, item.metric, item.lqs,
                      item.expired);
     }
   }
@@ -233,7 +234,7 @@ class mesh : detail::noncopyable {
 
   void dispatch(message msg, lqs_t lqs) {
     // clang-format off
-    MESH_CORE_LOGD("=>: self: 0x%02X, type: %d, src: 0x%02X, dst: 0x%02X, next_hop: 0x%02X, seq: %u, ttl: %u, ts: 0x%08X, lqs: %d, data: %s",
+    MESH_CORE_LOGD("=>: self: 0x%02X, type: %d, src: 0x%02X, dst: 0x%02X, next_hop: 0x%02X, seq: %u, ttl: %u, ts: 0x%08" PRIX32 ", lqs: %d, data: %s",
                    addr_, (int)msg.type, msg.src, msg.dst, msg.next_hop, msg.seq, msg.ttl, msg.ts, lqs, msg.data.c_str());
     // clang-format on
 
@@ -389,7 +390,7 @@ class mesh : detail::noncopyable {
     /// cache manager
     auto uuid = msg.cal_uuid();
     if (msg_uuid_cache_.exists(uuid)) {
-      MESH_CORE_LOGD("filter: msg is old, src: 0x%02X, seq: %u, uuid: 0x%08X", msg.src, msg.seq, uuid);
+      MESH_CORE_LOGD("filter: msg is old, src: 0x%02X, seq: %u, uuid: 0x%08" PRIX32, msg.src, msg.seq, uuid);
       return false;
     }
     msg_uuid_cache_.put(uuid);
