@@ -105,9 +105,11 @@ int main() {
   mesh.on_recv([](addr_t addr, const data_t& data) {
     MESH_CORE_LOG("addr: 0x%02X, data: %s", addr, data.c_str());
   });
+#ifdef MESH_CORE_ENABLE_TIME_SYNC
   mesh.on_sync_time([](timestamp_t ts) {
     MESH_CORE_LOG("on_sync_time: 0x%08X", ts);
   });
+#endif
 #ifdef MESH_CORE_ENABLE_ROUTE_DEBUG
   mesh.on_recv_debug([](addr_t addr, const data_t& data) {
     MESH_CORE_LOG("debug: addr: 0x%02X, data: %s", addr, data.c_str());

@@ -20,8 +20,14 @@
 
 namespace mesh_core {
 
+/// interceptor
+#ifdef MESH_CORE_ENABLE_BROADCAST_INTERCEPTOR
 using broadcast_interceptor_t = std::function<bool(message&)>;
+#endif
+
+#ifdef MESH_CORE_ENABLE_DISPATCH_INTERCEPTOR
 using dispatch_interceptor_t = std::function<bool(message&)>;
+#endif
 
 template <typename Impl>
 class mesh : detail::noncopyable {
@@ -101,9 +107,11 @@ class mesh : detail::noncopyable {
   }
 #endif
 
+#ifdef MESH_CORE_ENABLE_TIME_SYNC
   void on_sync_time(time_sync_handle_t handle) {
     time_sync_handle_ = std::move(handle);
   }
+#endif
 
   timestamp_t get_timestamp() {
     return impl_->get_timestamp_ms();
@@ -129,19 +137,23 @@ class mesh : detail::noncopyable {
     route_table_.add(info);
   }
 
+#ifdef MESH_CORE_ENABLE_BROADCAST_INTERCEPTOR
   /**
    * @param interceptor return true for continue
    */
   void set_broadcast_interceptor(broadcast_interceptor_t interceptor) {
     broadcast_interceptor_ = std::move(interceptor);
   }
+#endif
 
+#ifdef MESH_CORE_ENABLE_DISPATCH_INTERCEPTOR
   /**
    * @param interceptor return true for continue
    */
   void set_dispatch_interceptor(dispatch_interceptor_t interceptor) {
     dispatch_interceptor_ = std::move(interceptor);
   }
+#endif
 
   void dump_debug() {
     MESH_CORE_LOGD("route table: size: %" PRIu32, (uint32_t)route_table_.get_table().size());
@@ -200,6 +212,7 @@ class mesh : detail::noncopyable {
     msg.ts |= ((uint32_t)addr_ << 24);
 #endif
 
+#ifdef MESH_CORE_ENABLE_BROADCAST_INTERCEPTOR
     /// interceptor
     if (broadcast_interceptor_) {
       bool should_continue = broadcast_interceptor_(msg);
@@ -208,6 +221,7 @@ class mesh : detail::noncopyable {
         return;
       }
     }
+#endif
 
     /// broadcast message
     bool ok;
@@ -260,6 +274,7 @@ class mesh : detail::noncopyable {
     MESH_CORE_LOGD("from: 0x%02X", static_cast<mesh_core::addr_t>(msg.ts >> 24));
 #endif
 
+#ifdef MESH_CORE_ENABLE_DISPATCH_INTERCEPTOR
     /// interceptor
     if (dispatch_interceptor_) {
       bool should_continue = dispatch_interceptor_(msg);
@@ -268,6 +283,7 @@ class mesh : detail::noncopyable {
         return;
       }
     }
+#endif
 
     /// filter
     if (!message_filter(msg)) {
@@ -388,10 +404,13 @@ class mesh : detail::noncopyable {
     /// special message check
     if (msg.type == message_type::broadcast) {
       if (on_recv_handle_) on_recv_handle_(msg.src, msg.data);  // do not move data
-    } else if (msg.type == message_type::sync_time) {
+    }
+#ifdef MESH_CORE_ENABLE_TIME_SYNC
+    else if (msg.type == message_type::sync_time) {
       MESH_CORE_LOGD("sync ts: ttl=0, src: 0x%02X, seq: %u", msg.src, msg.seq);
       if (time_sync_handle_) time_sync_handle_(msg.ts);
     }
+#endif
 
     /// rebroadcast message
     if (enable_routing_) {
@@ -444,12 +463,22 @@ class mesh : detail::noncopyable {
   route_table route_table_;
   bool enable_routing_{true};
   on_recv_handle_t on_recv_handle_;
+
+#ifdef MESH_CORE_ENABLE_TIME_SYNC
+  time_sync_handle_t time_sync_handle_;
+#endif
+
 #ifdef MESH_CORE_ENABLE_ROUTE_DEBUG
   on_recv_debug_handle_t on_recv_debug_handle_;
 #endif
-  time_sync_handle_t time_sync_handle_;
+
+#ifdef MESH_CORE_ENABLE_BROADCAST_INTERCEPTOR
   broadcast_interceptor_t broadcast_interceptor_;
+#endif
+
+#ifdef MESH_CORE_ENABLE_DISPATCH_INTERCEPTOR
   dispatch_interceptor_t dispatch_interceptor_;
+#endif
 };
 
 }  // namespace mesh_core
