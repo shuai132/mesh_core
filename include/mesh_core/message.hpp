@@ -40,9 +40,11 @@ namespace mesh_core {
 enum class message_type : uint8_t {
   route_info = 0,
   route_info_and_request = 1,
-  user_data = 2,
+  sync_time = 2,
   broadcast = 3,
-  sync_time = 4,
+  user_data = 4,
+  route_debug_send = 5,
+  route_debug_back = 6,
 };
 
 struct message : detail::copyable {
@@ -81,18 +83,12 @@ struct message : detail::copyable {
     return (src << 24) | (seq << 16) | (uint16_t(ts & 0x0000FFFF));
   }
 
-  void finalize() {
-    len = SizeMin + data.size() - SizeNotInLen;
-    if (type == message_type::user_data) {
-      ++len;
-    }
-  }
-
   std::string serialize(bool& ok) {
     if (data.size() > DataSizeMax) {
       ok = false;
       return {};
     }
+    finalize();
     std::string payload;
     payload.reserve(SizeMin + data.size());
     payload.append((char*)&head, sizeof(head));
@@ -104,7 +100,7 @@ struct message : detail::copyable {
     payload.append((char*)&dst, sizeof(dst));
     payload.append((char*)&seq, sizeof(seq));
     payload.append((char*)&ts, sizeof(ts));
-    if (type == message_type::user_data) {
+    if (has_next_hop(*this)) {
       payload.append((char*)&next_hop, sizeof(next_hop));
     }
     payload.append(data);
@@ -156,7 +152,7 @@ struct message : detail::copyable {
     p += sizeof(seq);
     msg.ts = *(decltype(ts)*)p;
     p += sizeof(ts);
-    if (msg.type == message_type::user_data) {
+    if (has_next_hop(msg)) {
       msg.next_hop = *(decltype(next_hop)*)p;
       p += sizeof(next_hop);
     }
@@ -174,6 +170,17 @@ struct message : detail::copyable {
     msg.data.assign(p, pend - p - sizeof(crc));
     ok = true;
     return msg;
+  }
+
+  void finalize() {
+    len = SizeMin + data.size() - SizeNotInLen;
+    if (has_next_hop(*this)) {
+      ++len;
+    }
+  }
+
+  static bool has_next_hop(const message& msg) {
+    return msg.type == message_type::user_data || msg.type == message_type::route_debug_send || msg.type == message_type::route_debug_back;
   }
 };
 

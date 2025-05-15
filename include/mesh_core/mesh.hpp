@@ -57,9 +57,24 @@ class mesh : detail::noncopyable {
     auto info = route_table_.find_node(addr);
     m.next_hop = info ? info->next_hop : addr_;
     m.data = std::move(data);
-    m.finalize();
     broadcast(std::move(m));
   }
+
+#ifdef MESH_CORE_ENABLE_ROUTE_DEBUG
+  void send_route_debug(addr_t addr, bool is_send = true) {
+    message m;
+    m.type = is_send ? message_type::route_debug_send : message_type::route_debug_back;
+    m.src = addr_;
+    m.dst = addr;
+    m.seq = seq_++;
+    m.ttl = TTL_DEFAULT;
+    m.ts = impl_->get_timestamp_ms();
+    auto info = route_table_.find_node(addr);
+    m.next_hop = info ? info->next_hop : addr_;
+    m.data = std::to_string(addr_);
+    broadcast(std::move(m));
+  }
+#endif
 
   void broadcast(data_t data) {
     if (data.size() > message::DataSizeMax) {
@@ -73,13 +88,18 @@ class mesh : detail::noncopyable {
     m.ttl = TTL_DEFAULT;
     m.ts = impl_->get_timestamp_ms();
     m.data = std::move(data);
-    m.finalize();
     broadcast(std::move(m));
   }
 
   void on_recv(on_recv_handle_t handle) {
     on_recv_handle_ = std::move(handle);
   }
+
+#ifdef MESH_CORE_ENABLE_ROUTE_DEBUG
+  void on_recv_debug(on_recv_debug_handle_t handle) {
+    on_recv_debug_handle_ = std::move(handle);
+  }
+#endif
 
   void on_sync_time(time_sync_handle_t handle) {
     time_sync_handle_ = std::move(handle);
@@ -96,7 +116,6 @@ class mesh : detail::noncopyable {
     m.seq = seq_++;
     m.ttl = TTL_DEFAULT;
     m.ts = get_timestamp();
-    m.finalize();
     broadcast(std::move(m));
     return m.ts;
   }
@@ -227,7 +246,6 @@ class mesh : detail::noncopyable {
       if (it == table.cend() && request) {
         m.type = message_type::route_info_and_request;
       }
-      m.finalize();
       broadcast(std::move(m));
     }
   }
@@ -269,6 +287,8 @@ class mesh : detail::noncopyable {
         }
         return;
       } break;
+      case message_type::route_debug_send:
+      case message_type::route_debug_back:
       case message_type::user_data: {
         dispatch_userdata(std::move(msg));
         return;
@@ -319,10 +339,29 @@ class mesh : detail::noncopyable {
   }
 
   void dispatch_userdata(message msg) {
+#ifdef MESH_CORE_ENABLE_ROUTE_DEBUG
+    if (msg.type == message_type::route_debug_send) {
+      msg.data.append(">" + std::to_string(addr_));
+    } else if (msg.type == message_type::route_debug_back) {
+      msg.data.append("<" + std::to_string(addr_));
+    }
+#endif
+
     if (msg.dst == this->addr_) {
-      if (on_recv_handle_) on_recv_handle_(msg.src, std::move(msg.data));
+      if (msg.type == message_type::user_data) {
+        if (on_recv_handle_) on_recv_handle_(msg.src, std::move(msg.data));
+      }
+#ifdef MESH_CORE_ENABLE_ROUTE_DEBUG
+      else if (msg.type == message_type::route_debug_send) {
+        if (on_recv_debug_handle_) on_recv_debug_handle_(msg.src, std::move(msg.data));
+        send_route_debug(msg.src, false);
+      } else if (msg.type == message_type::route_debug_back) {
+        if (on_recv_debug_handle_) on_recv_debug_handle_(msg.src, std::move(msg.data));
+      }
+#endif
       return;
     }
+
     if (!enable_routing_) {
       MESH_CORE_LOGD("drop: disable routing");
       return;
@@ -405,6 +444,9 @@ class mesh : detail::noncopyable {
   route_table route_table_;
   bool enable_routing_{true};
   on_recv_handle_t on_recv_handle_;
+#ifdef MESH_CORE_ENABLE_ROUTE_DEBUG
+  on_recv_debug_handle_t on_recv_debug_handle_;
+#endif
   time_sync_handle_t time_sync_handle_;
   broadcast_interceptor_t broadcast_interceptor_;
   dispatch_interceptor_t dispatch_interceptor_;

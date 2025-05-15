@@ -108,6 +108,11 @@ int main() {
   mesh.on_sync_time([](timestamp_t ts) {
     MESH_CORE_LOG("on_sync_time: 0x%08X", ts);
   });
+#ifdef MESH_CORE_ENABLE_ROUTE_DEBUG
+  mesh.on_recv_debug([](addr_t addr, const data_t& data) {
+    MESH_CORE_LOG("debug: addr: 0x%02X, data: %s", addr, data.c_str());
+  });
+#endif
 
   std::thread([&] {
     for (;;) {
@@ -141,6 +146,20 @@ int main() {
         asio::post(s_io_context, [=, &mesh] {
           mesh.dump_debug();
         });
+      }
+
+      /// debug route
+      else if (input == -4) {
+#ifdef MESH_CORE_ENABLE_ROUTE_DEBUG
+        printf("debug route: \n");
+        std::cout << "to addr: ";
+        std::cin >> input;
+        addr_t dst = input;
+        printf("send to addr: 0x%02X\n", dst);
+        asio::post(s_io_context, [=, &mesh] {
+          mesh.send_route_debug(dst);
+        });
+#endif
       }
 
       /// test send message

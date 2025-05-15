@@ -31,6 +31,7 @@ static_assert(sizeof(msg_uuid_t) >= sizeof(addr_t) + sizeof(seq_t), "msg_uuid: [
 /// handle
 using recv_handle_t = std::function<void(std::string, mesh_core::lqs_t)>;
 using on_recv_handle_t = std::function<void(addr_t, data_t)>;
+using on_recv_debug_handle_t = std::function<void(addr_t, data_t)>;
 using time_sync_handle_t = std::function<void(timestamp_t)>;
 
 /// default value

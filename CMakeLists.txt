@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 3.15)
 
 project(mesh_core)
 
+# option
+option(MESH_CORE_ENABLE_ROUTE_DEBUG "" OFF)
+
 # test
 option(MESH_CORE_BUILD_TEST "" OFF)
 
@@ -13,6 +16,10 @@ set(CMAKE_CXX_STANDARD 14)
 add_library(${PROJECT_NAME} INTERFACE)
 target_include_directories(${PROJECT_NAME} INTERFACE include)
 
+if (MESH_CORE_ENABLE_ROUTE_DEBUG)
+    target_compile_definitions(${PROJECT_NAME} INTERFACE -DMESH_CORE_ENABLE_ROUTE_DEBUG)
+endif ()
+
 if (MESH_CORE_BUILD_TEST)
     add_definitions(-DMESH_CORE_LOG_SHOW_DEBUG)
     # add_definitions(-DMESH_CORE_LOG_SHOW_VERBOSE)
@@ -21,6 +28,7 @@ if (MESH_CORE_BUILD_TEST)
     add_definitions(-DMESH_CORE_DEBUG_TS_SAVE_SEND_FROM)
     add_definitions(-DMESH_CORE_ROUTE_EXPIRED_MS=30000)
     add_definitions(-DMESH_CORE_ROUTE_SYNC_INTERVAL_MS=10000)
+    add_definitions(-DMESH_CORE_ENABLE_ROUTE_DEBUG)
 
     message(STATUS "ASIO_PATH: $ENV{ASIO_PATH}")
     add_definitions(-DASIO_NO_DEPRECATED)

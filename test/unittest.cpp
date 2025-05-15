@@ -52,7 +52,6 @@ static void test_message() {
     // test serialize
     mesh_core::message m;
     m.data = "hello";
-    m.finalize();
     bool ok;
     auto payload = m.serialize(ok);
     MESH_CORE_LOG("payload:");
