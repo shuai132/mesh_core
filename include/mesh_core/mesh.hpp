@@ -43,10 +43,6 @@ class mesh : detail::noncopyable {
     return addr_;
   }
 
-  void enable_routing(bool enable) {
-    enable_routing_ = enable;
-  }
-
   void send(addr_t addr, data_t data) {
     if (data.size() > message::DataSizeMax) {
       MESH_CORE_LOGE("data size > %d", message::DataSizeMax);
@@ -234,6 +230,21 @@ class mesh : detail::noncopyable {
   }
 
   void sync_route(bool request = false) {
+#ifdef MESH_CORE_DISABLE_ROUTE
+    // only report self
+    message m;
+    m.type = request ? message_type::route_info_and_request : message_type::route_info;
+    m.src = addr_;
+    m.seq = seq_++;
+    m.ttl = TTL_DEFAULT;
+    m.ts = get_timestamp();
+    route_msg rm;
+    rm.dst = addr_;
+    rm.next_hop = addr_;
+    rm.metric = 0;
+    m.data.append(reinterpret_cast<const char*>(&rm), sizeof(rm));
+    broadcast(std::move(m));
+#else
     const auto& table = route_table_.get_table();
     const int max_per_msg = (int)(message::DataSizeMax / sizeof(route_msg));
     auto it = table.begin();
@@ -262,6 +273,7 @@ class mesh : detail::noncopyable {
       }
       broadcast(std::move(m));
     }
+#endif
   }
 
   void dispatch(message msg, lqs_t lqs) {
@@ -378,10 +390,10 @@ class mesh : detail::noncopyable {
       return;
     }
 
-    if (!enable_routing_) {
-      MESH_CORE_LOGD("drop: disable routing");
-      return;
-    }
+#ifdef MESH_CORE_DISABLE_ROUTE
+    MESH_CORE_LOGD("drop: disable route");
+    return;
+#else
     if (--msg.ttl == 0) {
       MESH_CORE_LOGD("drop: ttl=0, src: 0x%02X, seq: %u", msg.src, msg.seq);
       return;
@@ -398,6 +410,7 @@ class mesh : detail::noncopyable {
     msg.next_hop = info->next_hop;
     MESH_CORE_LOGD("next hop: 0x%02X, ttl = %u", msg.next_hop, msg.ttl);
     broadcast(std::move(msg));
+#endif
   }
 
   void dispatch_any_broadcast(message msg) {
@@ -413,7 +426,8 @@ class mesh : detail::noncopyable {
 #endif
 
     /// rebroadcast message
-    if (enable_routing_) {
+#ifndef MESH_CORE_DISABLE_ROUTE
+    {
       if (--msg.ttl == 0) {
         MESH_CORE_LOGD("drop: ttl=0, src: 0x%02X, seq: %u", msg.src, msg.seq);
         return;
@@ -426,6 +440,7 @@ class mesh : detail::noncopyable {
           },
           random(DELAY_MIN, DELAY_MAX));
     }
+#endif
   }
 
   uint32_t random(uint32_t l, uint32_t r) {
@@ -461,7 +476,6 @@ class mesh : detail::noncopyable {
   seq_t seq_{};
   detail::lru_record<msg_uuid_t> msg_uuid_cache_{LRU_RECORD_SIZE};
   route_table route_table_;
-  bool enable_routing_{true};
   on_recv_handle_t on_recv_handle_;
 
 #ifdef MESH_CORE_ENABLE_TIME_SYNC
