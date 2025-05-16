@@ -42,7 +42,6 @@ if (MESH_CORE_BUILD_TEST)
     # add_definitions(-DMESH_CORE_LOG_SHOW_VERBOSE)
 
     # config for test
-    add_definitions(-DMESH_CORE_DEBUG_TS_SAVE_SEND_FROM)
     add_definitions(-DMESH_CORE_ROUTE_EXPIRED_MS=30000)
     add_definitions(-DMESH_CORE_ROUTE_SYNC_INTERVAL_MS=10000)
     if (MESH_CORE_BUILD_TEST_ALL_FUTURE)
@@ -85,10 +84,17 @@ if (MESH_CORE_BUILD_TEST)
     set(TARGET_NAME ${PROJECT_NAME}_unittest)
     add_executable(${TARGET_NAME} test/unittest.cpp)
     target_link_libraries(${TARGET_NAME} ${PROJECT_NAME})
+    target_compile_definitions(${TARGET_NAME} PRIVATE
+            -DMESH_CORE_DELAY_MS_MIN=0
+            -DMESH_CORE_DELAY_MS_MAX=0
+    )
 
     if (NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
         set(TARGET_NAME ${PROJECT_NAME}_udp_mesh)
         add_executable(${TARGET_NAME} test/udp_mesh.cpp)
         target_link_libraries(${TARGET_NAME} ${PROJECT_NAME})
+        target_compile_definitions(${TARGET_NAME} PRIVATE
+                -DMESH_CORE_DEBUG_TS_SAVE_SEND_FROM
+        )
     endif ()
 endif ()
