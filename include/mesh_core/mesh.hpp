@@ -43,35 +43,24 @@ class mesh : detail::noncopyable {
     return addr_;
   }
 
-  void send(addr_t addr, data_t data) {
+  void send(addr_t dst, data_t data) {
     if (data.size() > message::DataSizeMax) {
       MESH_CORE_LOGE("data size > %d", message::DataSizeMax);
       return;
     }
 
-    message m;
-    m.type = message_type::user_data;
-    m.src = addr_;
-    m.dst = addr;
-    m.seq = seq_++;
-    m.ttl = TTL_DEFAULT;
-    m.ts = impl_->get_timestamp_ms();
-    auto info = route_table_.find_node(addr);
+    message m = create_message(message_type::user_data, dst);
+    auto info = route_table_.find_node(dst);
     m.next_hop = info ? info->next_hop : addr_;
     m.data = std::move(data);
     broadcast(std::move(m));
   }
 
 #ifdef MESH_CORE_ENABLE_ROUTE_DEBUG
-  void send_route_debug(addr_t addr, bool is_send = true) {
-    message m;
-    m.type = is_send ? message_type::route_debug_send : message_type::route_debug_back;
-    m.src = addr_;
-    m.dst = addr;
-    m.seq = seq_++;
-    m.ttl = TTL_DEFAULT;
-    m.ts = impl_->get_timestamp_ms();
-    auto info = route_table_.find_node(addr);
+  void send_route_debug(addr_t dst, bool is_send = true) {
+    auto type = is_send ? message_type::route_debug_send : message_type::route_debug_back;
+    message m = create_message(type, dst);
+    auto info = route_table_.find_node(dst);
     m.next_hop = info ? info->next_hop : addr_;
     m.data = std::to_string(addr_);
     broadcast(std::move(m));
@@ -83,12 +72,7 @@ class mesh : detail::noncopyable {
       MESH_CORE_LOGE("data size > %d", message::DataSizeMax);
       return;
     }
-    message m;
-    m.type = message_type::broadcast;
-    m.src = addr_;
-    m.seq = seq_++;
-    m.ttl = TTL_DEFAULT;
-    m.ts = impl_->get_timestamp_ms();
+    message m = create_message(message_type::broadcast, {});
     m.data = std::move(data);
     broadcast(std::move(m));
   }
@@ -113,16 +97,13 @@ class mesh : detail::noncopyable {
     return impl_->get_timestamp_ms();
   }
 
+#ifdef MESH_CORE_ENABLE_TIME_SYNC
   uint32_t sync_time() {
-    message m;
-    m.type = message_type::sync_time;
-    m.src = addr_;
-    m.seq = seq_++;
-    m.ttl = TTL_DEFAULT;
-    m.ts = get_timestamp();
+    message m = create_message(message_type::sync_time, {});
     broadcast(std::move(m));
     return m.ts;
   }
+#endif
 
   void add_static_route(addr_t dst, addr_t next_hop) {
     route_info info;
@@ -152,11 +133,48 @@ class mesh : detail::noncopyable {
 #endif
 
   void dump_debug() {
-    MESH_CORE_LOGD("route table: size: %" PRIu32, (uint32_t)route_table_.get_table().size());
+    MESH_CORE_LOGD("route table: 0x%02X: %" PRIu32, addr_, (uint32_t)route_table_.get_table().size());
     for (const auto& item : route_table_.get_table()) {
       MESH_CORE_LOGD("dst: 0x%02X, next_hop: 0x%02X, metric: %d, lqs: %d, expired: 0x%08" PRIX32, item.dst, item.next_hop, item.metric, item.lqs,
                      item.expired);
     }
+  }
+
+  void sync_route(bool request = false) {
+#ifdef MESH_CORE_DISABLE_ROUTE
+    // only report self
+    auto type = request ? message_type::route_info_and_request : message_type::route_info;
+    message m = create_message(type, {});
+    route_msg rm;
+    rm.dst = addr_;
+    rm.next_hop = addr_;
+    rm.metric = 0;
+    m.data.append(reinterpret_cast<const char*>(&rm), sizeof(rm));
+    broadcast(std::move(m));
+#else
+    const auto& table = route_table_.get_table();
+    const int max_per_msg = (int)(message::DataSizeMax / sizeof(route_msg));
+    auto it = table.begin();
+    while (it != table.end()) {
+      message m = create_message(message_type::route_info, {});
+      int count = 0;
+      route_msg rm;
+      while (it != table.end() && count < max_per_msg) {
+        const auto& item = *it;
+        rm.dst = item.dst;
+        rm.next_hop = addr_;
+        rm.metric = item.metric;
+        m.data.append(reinterpret_cast<const char*>(&rm), sizeof(rm));
+        ++it;
+        ++count;
+      }
+
+      if (it == table.cend() && request) {
+        m.type = message_type::route_info_and_request;
+      }
+      broadcast(std::move(m));
+    }
+#endif
   }
 
  private:
@@ -201,6 +219,17 @@ class mesh : detail::noncopyable {
     impl_->run_delay(*task, ms);
   }
 
+  message create_message(message_type type, addr_t dst) {
+    message m;
+    m.type = type;
+    m.src = addr_;
+    m.dst = dst;
+    m.seq = seq_++;
+    m.ttl = TTL_DEFAULT;
+    m.ts = impl_->get_timestamp_ms();
+    return m;
+  }
+
   void broadcast(message msg) {
 #ifdef MESH_CORE_DEBUG_TS_SAVE_SEND_FROM
     // for test, ts only use low 16bit for now
@@ -209,7 +238,7 @@ class mesh : detail::noncopyable {
 #endif
 
 #ifdef MESH_CORE_ENABLE_BROADCAST_INTERCEPTOR
-    /// interceptor
+    /// broadcast interceptor
     if (broadcast_interceptor_) {
       bool should_continue = broadcast_interceptor_(msg);
       if (!should_continue) {
@@ -227,53 +256,6 @@ class mesh : detail::noncopyable {
     } else {
       MESH_CORE_LOGE("data size > %d", message::DataSizeMax);
     }
-  }
-
-  void sync_route(bool request = false) {
-#ifdef MESH_CORE_DISABLE_ROUTE
-    // only report self
-    message m;
-    m.type = request ? message_type::route_info_and_request : message_type::route_info;
-    m.src = addr_;
-    m.seq = seq_++;
-    m.ttl = TTL_DEFAULT;
-    m.ts = get_timestamp();
-    route_msg rm;
-    rm.dst = addr_;
-    rm.next_hop = addr_;
-    rm.metric = 0;
-    m.data.append(reinterpret_cast<const char*>(&rm), sizeof(rm));
-    broadcast(std::move(m));
-#else
-    const auto& table = route_table_.get_table();
-    const int max_per_msg = (int)(message::DataSizeMax / sizeof(route_msg));
-    auto it = table.begin();
-    while (it != table.end()) {
-      message m;
-      m.type = message_type::route_info;
-      m.src = addr_;
-      m.seq = seq_++;
-      m.ttl = TTL_DEFAULT;
-      m.ts = get_timestamp();
-
-      int count = 0;
-      route_msg rm;
-      while (it != table.end() && count < max_per_msg) {
-        const auto& item = *it;
-        rm.dst = item.dst;
-        rm.next_hop = addr_;
-        rm.metric = item.metric;
-        m.data.append(reinterpret_cast<const char*>(&rm), sizeof(rm));
-        ++it;
-        ++count;
-      }
-
-      if (it == table.cend() && request) {
-        m.type = message_type::route_info_and_request;
-      }
-      broadcast(std::move(m));
-    }
-#endif
   }
 
   void dispatch(message msg, lqs_t lqs) {

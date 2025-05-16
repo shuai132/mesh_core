@@ -59,7 +59,7 @@ struct message : detail::copyable {
   seq_t seq{};
   timestamp_t ts{};
 
-  addr_t next_hop{};  // only for userdata
+  addr_t next_hop{};  // only for userdata and some type
   data_t data;        // userdata or route_infos
 
   uint16_t crc{};
@@ -70,8 +70,8 @@ struct message : detail::copyable {
   static const uint8_t SizeMin = sizeof(head) + sizeof(ver) + sizeof(len) + sizeof(ttl) + sizeof(src) + sizeof(dst)+ sizeof(seq) + sizeof(ts) + sizeof(crc);
   // clang-format on
   static const uint8_t SizeNotInLen = sizeof(head) + sizeof(ver) + sizeof(len);
-  // message data max size: 251 bytes
-  static const uint8_t DataSizeMax = (sizeof(len) << 8) - SizeNotInLen - sizeof(crc);
+  // message data max size: 250 bytes
+  static const uint8_t DataSizeMax = (sizeof(len) << 8) - SizeNotInLen - sizeof(crc) - sizeof(next_hop);
   static const uint16_t SizeMax = SizeMin + DataSizeMax;
 
  public:

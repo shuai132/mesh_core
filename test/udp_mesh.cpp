@@ -125,11 +125,12 @@ int main() {
 
       /// test sync_time
       if (input == -1) {
+#ifdef MESH_CORE_ENABLE_TIME_SYNC
         asio::post(s_io_context, [&mesh] {
           mesh.sync_time();
           MESH_CORE_LOG("time: 0x%08X", mesh.get_timestamp());
         });
-        continue;
+#endif
       }
 
       /// test broadcast
