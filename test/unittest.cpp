@@ -113,13 +113,13 @@ int main() {
         case 0: {
           ASSERT(i == 9);
           ASSERT(data == "hello");
-          assert(!TEST_FLAG_RECV_HELLO);
+          ASSERT(!TEST_FLAG_RECV_HELLO);
           TEST_FLAG_RECV_HELLO = true;
         } break;
         case 9: {
           ASSERT(i == 0);
           ASSERT(data == "world");
-          assert(!TEST_FLAG_RECV_WORLD);
+          ASSERT(!TEST_FLAG_RECV_WORLD);
           TEST_FLAG_RECV_WORLD = true;
         } break;
         default: {
@@ -134,13 +134,13 @@ int main() {
         case 0: {
           ASSERT(i == 9);
           ASSERT(data == "0>1>2>3>4>5>6>7>8>9");
-          assert(!TEST_FLAG_ROUTE_DEBUG_SEND);
+          ASSERT(!TEST_FLAG_ROUTE_DEBUG_SEND);
           TEST_FLAG_ROUTE_DEBUG_SEND = true;
         } break;
         case 9: {
           ASSERT(i == 0);
           ASSERT(data == "9<8<7<6<5<4<3<2<1<0");
-          assert(!TEST_FLAG_ROUTE_DEBUG_BACK);
+          ASSERT(!TEST_FLAG_ROUTE_DEBUG_BACK);
           TEST_FLAG_ROUTE_DEBUG_BACK = true;
         } break;
         default: {
@@ -181,8 +181,8 @@ int main() {
   asio::steady_timer timer(s_io_context);
   timer.expires_after(std::chrono::milliseconds(300));
   timer.async_wait([&](const asio::error_code&) {
-    assert(TEST_FLAG_RECV_HELLO);
-    assert(TEST_FLAG_RECV_WORLD);
+    ASSERT(TEST_FLAG_RECV_HELLO);
+    ASSERT(TEST_FLAG_RECV_WORLD);
     ASSERT(TEST_FLAG_BROADCAST.size() == 9);
     for (size_t i = 1; i < TEST_FLAG_BROADCAST.size(); ++i) {
       ASSERT(TEST_FLAG_BROADCAST[i] == true);
@@ -194,8 +194,8 @@ int main() {
     }
 #endif
 #ifdef MESH_CORE_ENABLE_ROUTE_DEBUG
-    assert(TEST_FLAG_ROUTE_DEBUG_SEND);
-    assert(TEST_FLAG_ROUTE_DEBUG_BACK);
+    ASSERT(TEST_FLAG_ROUTE_DEBUG_SEND);
+    ASSERT(TEST_FLAG_ROUTE_DEBUG_BACK);
 #endif
     MESH_CORE_LOG("All Test Passed!");
     s_io_context.stop();
