@@ -93,8 +93,5 @@ if (MESH_CORE_BUILD_TEST)
         set(TARGET_NAME ${PROJECT_NAME}_udp_mesh)
         add_executable(${TARGET_NAME} test/udp_mesh.cpp)
         target_link_libraries(${TARGET_NAME} ${PROJECT_NAME})
-        target_compile_definitions(${TARGET_NAME} PRIVATE
-                -DMESH_CORE_DEBUG_TS_SAVE_SEND_FROM
-        )
     endif ()
 endif ()
